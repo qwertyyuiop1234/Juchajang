@@ -19,6 +19,7 @@ import {
   BorderRadius,
   Shadows,
 } from "../../constants/Styles";
+import { NaverMapView } from "@mj-studio/react-native-naver-map";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -126,34 +127,19 @@ export default function HomeScreen() {
     { icon: "home", label: "집", color: "#607D8B" },
   ];
 
+  // Initial camera
+  const INITIAL_CAMERA = {
+    latitude: 37.5666102, // 서울 중심부 위도
+    longitude: 126.9783881, // 서울 중심부 경도
+    zoom: 12, // 줌 레벨
+  };
+
   return (
     <View style={styles.container}>
-      {/* 지도 배경 */}
-      <View style={styles.mapBackground}>
-        <View style={styles.mapGrid}>
-          {/* 주요 도로 */}
-          <View style={styles.mainRoad1} />
-          <View style={styles.mainRoad2} />
-          <View style={styles.mainRoad3} />
-
-          {/* 건물들 */}
-          <View style={styles.building1} />
-          <View style={styles.building2} />
-          <View style={styles.building3} />
-          <View style={styles.building4} />
-          <View style={styles.building5} />
-          <View style={styles.building6} />
-          <View style={styles.building7} />
-          <View style={styles.building8} />
-
-          {/* 지도 마커들 */}
-          <View style={styles.mapMarker} />
-          <View style={[styles.mapMarker, { top: "45%", left: "75%" }]} />
-          <View style={[styles.mapMarker, { top: "60%", left: "25%" }]} />
-          <View style={[styles.mapMarker, { top: "30%", left: "60%" }]} />
-        </View>
-      </View>
-
+      <NaverMapView
+        style={styles.map}
+        initialCamera={INITIAL_CAMERA}
+      ></NaverMapView>
       {/* 상단 UI 레이어 */}
       <SafeAreaView style={styles.safeArea}>
         {/* 검색 섹션 */}
@@ -723,5 +709,10 @@ const styles = StyleSheet.create({
   popularSearchTagText: {
     fontSize: Typography.sm,
     color: Colors.textSecondary,
+  },
+
+  //map
+  map: {
+    flex: 1,
   },
 });
