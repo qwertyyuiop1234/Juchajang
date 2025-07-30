@@ -3,7 +3,8 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput, Modal 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useFavorites } from '../../contexts/FavoritesContext';
+import { useFavorites, ParkingLot } from '../../contexts/FavoritesContext';
+import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../../constants/Styles';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function HomeScreen() {
   ]);
 
   // 주차장 데이터 (실제로는 API에서 받아올 데이터)
-  const parkingLots = [
+  const parkingLots: ParkingLot[] = [
     {
       id: 1,
       name: '강남역 지하주차장',
@@ -30,7 +31,7 @@ export default function HomeScreen() {
       total: 100,
       price: '3,000원/h',
       status: '여유',
-      statusColor: '#4CAF50',
+      statusColor: Colors.success,
     },
     {
       id: 2,
@@ -43,7 +44,7 @@ export default function HomeScreen() {
       total: 80,
       price: '2,500원/h',
       status: '보통',
-      statusColor: '#FF9800',
+      statusColor: Colors.warning,
     },
     {
       id: 3,
@@ -56,7 +57,7 @@ export default function HomeScreen() {
       total: 120,
       price: '4,000원/h',
       status: '만차',
-      statusColor: '#F44336',
+      statusColor: Colors.error,
     },
     {
       id: 4,
@@ -69,7 +70,7 @@ export default function HomeScreen() {
       total: 60,
       price: '2,000원/h',
       status: '여유',
-      statusColor: '#4CAF50',
+      statusColor: Colors.success,
     },
   ];
 
@@ -77,7 +78,7 @@ export default function HomeScreen() {
     router.push(`/parking-detail?id=${id}` as any);
   };
 
-  const handleFavoriteToggle = (parkingLot: any) => {
+  const handleFavoriteToggle = (parkingLot: ParkingLot) => {
     if (isFavorite(parkingLot.id)) {
       removeFavorite(parkingLot.id);
     } else {
@@ -89,27 +90,20 @@ export default function HomeScreen() {
     setIsSearchModalVisible(true);
   };
 
-  const handleNavigationPress = () => {
-    // 길찾기 기능 - 현재 위치에서 주변 주차장으로 안내
-    router.push('/(tabs)/parking' as any);
-  };
-
   const handleSearchItemPress = (searchTerm: string) => {
     setSearchText(searchTerm);
     setIsSearchModalVisible(false);
-    // 여기에 실제 검색 로직 추가
   };
 
   const handleVoiceSearch = () => {
-    // 음성 검색 기능
     console.log('음성 검색 시작');
   };
 
   const quickSearchItems = [
-    { icon: 'car', label: '주차장', color: '#007AFF' },
-    { icon: 'business', label: '백화점', color: '#4CAF50' },
-    { icon: 'restaurant', label: '음식점', color: '#FF9800' },
-    { icon: 'medical', label: '병원', color: '#F44336' },
+    { icon: 'car', label: '주차장', color: Colors.primary },
+    { icon: 'business', label: '백화점', color: Colors.success },
+    { icon: 'restaurant', label: '음식점', color: Colors.warning },
+    { icon: 'medical', label: '병원', color: Colors.error },
     { icon: 'school', label: '학교', color: '#9C27B0' },
     { icon: 'home', label: '집', color: '#607D8B' },
   ];
@@ -118,7 +112,6 @@ export default function HomeScreen() {
     <View style={styles.container}>
       {/* 지도 배경 */}
       <View style={styles.mapBackground}>
-        {/* 지도 그리드 */}
         <View style={styles.mapGrid}>
           {/* 주요 도로 */}
           <View style={styles.mainRoad1} />
@@ -148,11 +141,11 @@ export default function HomeScreen() {
         {/* 검색 섹션 */}
         <View style={styles.searchSection}>
           <TouchableOpacity style={styles.searchBar} onPress={handleSearchPress}>
-            <Ionicons name="search" size={20} color="#666" />
+            <Ionicons name="search" size={20} color={Colors.textSecondary} />
             <Text style={styles.searchPlaceholder}>장소, 버스, 지하철, 주소 검색</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.voiceButton} onPress={handleVoiceSearch}>
-            <Ionicons name="mic" size={20} color="#007AFF" />
+            <Ionicons name="mic" size={20} color={Colors.primary} />
           </TouchableOpacity>
         </View>
 
@@ -161,25 +154,25 @@ export default function HomeScreen() {
           <View style={styles.searchDropdown}>
             <View style={styles.searchDropdownHeader}>
               <View style={styles.searchInputContainer}>
-                <Ionicons name="search" size={20} color="#666" />
-            <TextInput
-              style={styles.searchInput}
+                <Ionicons name="search" size={20} color={Colors.textSecondary} />
+                <TextInput
+                  style={styles.searchInput}
                   placeholder="장소, 버스, 지하철, 주소 검색"
-              value={searchText}
-              onChangeText={setSearchText}
+                  value={searchText}
+                  onChangeText={setSearchText}
                   autoFocus={true}
-            />
+                />
                 {searchText.length > 0 && (
                   <TouchableOpacity onPress={() => setSearchText('')}>
-                    <Ionicons name="close-circle" size={20} color="#666" />
+                    <Ionicons name="close-circle" size={20} color={Colors.textSecondary} />
                   </TouchableOpacity>
                 )}
-          </View>
+              </View>
               <TouchableOpacity 
                 style={styles.closeButton}
                 onPress={() => setIsSearchModalVisible(false)}
               >
-                <Ionicons name="close" size={20} color="#666" />
+                <Ionicons name="close" size={20} color={Colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -198,10 +191,10 @@ export default function HomeScreen() {
                         <Ionicons name={item.icon as any} size={20} color="white" />
                       </View>
                       <Text style={styles.quickSearchLabel}>{item.label}</Text>
-            </TouchableOpacity>
+                    </TouchableOpacity>
                   ))}
-          </View>
-        </View>
+                </View>
+              </View>
 
               {/* 최근 검색 */}
               <View style={styles.recentSearchSection}>
@@ -212,10 +205,10 @@ export default function HomeScreen() {
                     style={styles.recentSearchItem}
                     onPress={() => handleSearchItemPress(search)}
                   >
-                    <Ionicons name="time" size={16} color="#666" />
+                    <Ionicons name="time" size={16} color={Colors.textSecondary} />
                     <Text style={styles.recentSearchText}>{search}</Text>
                     <TouchableOpacity>
-                      <Ionicons name="close" size={16} color="#999" />
+                      <Ionicons name="close" size={16} color={Colors.textTertiary} />
                     </TouchableOpacity>
                   </TouchableOpacity>
                 ))}
@@ -235,7 +228,7 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
-            </View>
+              </View>
             </ScrollView>
           </View>
         )}
@@ -255,10 +248,10 @@ export default function HomeScreen() {
               >
                 <View style={styles.cardHeader}>
                   <View style={styles.cardTitle}>
-                  <Text style={styles.parkingName}>{lot.name}</Text>
-                  <View style={[styles.statusTag, { backgroundColor: lot.statusColor }]}>
-                    <Text style={styles.statusText}>{lot.status}</Text>
-                  </View>
+                    <Text style={styles.parkingName}>{lot.name}</Text>
+                    <View style={[styles.statusTag, { backgroundColor: lot.statusColor }]}>
+                      <Text style={styles.statusText}>{lot.status}</Text>
+                    </View>
                   </View>
                   <TouchableOpacity
                     style={styles.favoriteButton}
@@ -268,7 +261,7 @@ export default function HomeScreen() {
                     <Ionicons 
                       name={isFavorite(lot.id) ? "heart" : "heart-outline"} 
                       size={20} 
-                      color={isFavorite(lot.id) ? "#FF6B6B" : "#ccc"} 
+                      color={isFavorite(lot.id) ? Colors.error : Colors.textTertiary} 
                     />
                   </TouchableOpacity>
                 </View>
@@ -277,11 +270,11 @@ export default function HomeScreen() {
 
                 <View style={styles.parkingDetails}>
                   <View style={styles.detailItem}>
-                    <Ionicons name="location" size={14} color="#007AFF" />
+                    <Ionicons name="location" size={14} color={Colors.primary} />
                     <Text style={styles.detailText}>{lot.distance}</Text>
                   </View>
                   <View style={styles.detailItem}>
-                    <Ionicons name="time" size={14} color="#4CAF50" />
+                    <Ionicons name="time" size={14} color={Colors.success} />
                     <Text style={styles.detailText}>{lot.time}</Text>
                   </View>
                   <View style={styles.detailItem}>
@@ -300,7 +293,7 @@ export default function HomeScreen() {
             ))}
           </ScrollView>
         </View>
-    </SafeAreaView>
+      </SafeAreaView>
     </View>
   );
 }
@@ -308,7 +301,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: Colors.background,
   },
   mapBackground: {
     position: 'absolute',
@@ -328,7 +321,7 @@ const styles = StyleSheet.create({
     left: '10%',
     right: '10%',
     height: 3,
-    backgroundColor: '#666',
+    backgroundColor: Colors.gray600,
     borderRadius: 2,
   },
   mainRoad2: {
@@ -337,7 +330,7 @@ const styles = StyleSheet.create({
     bottom: '10%',
     left: '40%',
     width: 3,
-    backgroundColor: '#666',
+    backgroundColor: Colors.gray600,
     borderRadius: 2,
   },
   mainRoad3: {
@@ -346,7 +339,7 @@ const styles = StyleSheet.create({
     left: '20%',
     right: '20%',
     height: 2,
-    backgroundColor: '#999',
+    backgroundColor: Colors.gray500,
     borderRadius: 1,
   },
   building1: {
@@ -356,7 +349,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 40,
     backgroundColor: '#87CEEB',
-    borderRadius: 4,
+    borderRadius: BorderRadius.sm,
   },
   building2: {
     position: 'absolute',
@@ -365,7 +358,7 @@ const styles = StyleSheet.create({
     width: 35,
     height: 50,
     backgroundColor: '#98D8E8',
-    borderRadius: 4,
+    borderRadius: BorderRadius.sm,
   },
   building3: {
     position: 'absolute',
@@ -374,7 +367,7 @@ const styles = StyleSheet.create({
     width: 25,
     height: 35,
     backgroundColor: '#B0E0E6',
-    borderRadius: 4,
+    borderRadius: BorderRadius.sm,
   },
   building4: {
     position: 'absolute',
@@ -383,7 +376,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 45,
     backgroundColor: '#87CEEB',
-    borderRadius: 4,
+    borderRadius: BorderRadius.sm,
   },
   building5: {
     position: 'absolute',
@@ -392,7 +385,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     backgroundColor: '#98D8E8',
-    borderRadius: 4,
+    borderRadius: BorderRadius.sm,
   },
   building6: {
     position: 'absolute',
@@ -401,7 +394,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 25,
     backgroundColor: '#B0E0E6',
-    borderRadius: 4,
+    borderRadius: BorderRadius.sm,
   },
   building7: {
     position: 'absolute',
@@ -410,7 +403,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 38,
     backgroundColor: '#87CEEB',
-    borderRadius: 4,
+    borderRadius: BorderRadius.sm,
   },
   building8: {
     position: 'absolute',
@@ -419,7 +412,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 42,
     backgroundColor: '#98D8E8',
-    borderRadius: 4,
+    borderRadius: BorderRadius.sm,
   },
   mapMarker: {
     position: 'absolute',
@@ -427,52 +420,40 @@ const styles = StyleSheet.create({
     left: '50%',
     width: 8,
     height: 8,
-    backgroundColor: '#FF6B6B',
+    backgroundColor: Colors.error,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: 'white',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.8,
-    shadowRadius: 2,
-    elevation: 6,
+    borderColor: Colors.white,
+    ...Shadows.lg,
   },
   safeArea: {
     flex: 1,
   },
   searchSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: 'white',
-    marginHorizontal: 20,
-    marginTop: 20,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.sm,
+    backgroundColor: Colors.surface,
+    marginHorizontal: Spacing.base,
+    marginTop: Spacing.base,
+    borderRadius: BorderRadius.xl,
+    ...Shadows.base,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  directionButton: {
-    padding: 8,
-    marginRight: 12,
-  },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: Spacing.sm,
     flex: 1,
   },
   searchPlaceholder: {
     flex: 1,
-    fontSize: 16,
-    color: '#999',
+    fontSize: Typography.base,
+    color: Colors.textSecondary,
   },
   voiceButton: {
-    padding: 8,
+    padding: Spacing.sm,
   },
   parkingSection: {
     position: 'absolute',
@@ -481,74 +462,70 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: 'transparent',
     maxHeight: '45%',
-    paddingBottom: 20,
+    paddingBottom: Spacing.base,
   },
   parkingListContent: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    gap: 12,
+    paddingHorizontal: Spacing.base,
+    paddingTop: Spacing.sm,
+    gap: Spacing.sm,
   },
   parkingCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.base,
     width: 280,
-    marginRight: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginRight: Spacing.sm,
+    ...Shadows.base,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: Spacing.sm,
   },
   cardTitle: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: Spacing.sm,
   },
   parkingName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: Typography.base,
+    fontWeight: '600',
+    color: Colors.textPrimary,
     flex: 1,
   },
   statusTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
   },
   statusText: {
-    fontSize: 10,
-    color: 'white',
+    fontSize: Typography.xs,
+    color: Colors.white,
     fontWeight: '500',
   },
   favoriteButton: {
-    padding: 4,
+    padding: Spacing.xs,
   },
   parkingAddress: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
+    fontSize: Typography.sm,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.sm,
   },
   parkingDetails: {
     flexDirection: 'row',
-    marginBottom: 12,
-    gap: 16,
+    marginBottom: Spacing.sm,
+    gap: Spacing.base,
   },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: Spacing.xs,
   },
   detailText: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: Typography.xs,
+    color: Colors.textSecondary,
   },
   cardFooter: {
     flexDirection: 'row',
@@ -556,82 +533,78 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   priceText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#FF6B6B',
+    fontSize: Typography.sm,
+    fontWeight: '600',
+    color: Colors.error,
   },
   availabilityText: {
-    fontSize: 12,
-    color: '#007AFF',
+    fontSize: Typography.xs,
+    color: Colors.primary,
     fontWeight: '500',
   },
   // 검색 드롭다운 스타일
   searchDropdown: {
     position: 'absolute',
-    top: 75, // 검색창 바로 아래
-    left: 20,
-    right: 20,
-    backgroundColor: 'white',
+    top: 75,
+    left: Spacing.base,
+    right: Spacing.base,
+    backgroundColor: Colors.surface,
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
+    borderBottomLeftRadius: BorderRadius.xl,
+    borderBottomRightRadius: BorderRadius.xl,
+    ...Shadows.lg,
     zIndex: 1000,
     maxHeight: 400,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: Colors.borderLight,
   },
   searchDropdownHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: Colors.borderLight,
   },
   searchInputContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 25,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    marginRight: 10,
+    backgroundColor: Colors.gray100,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.sm,
+    marginRight: Spacing.sm,
   },
   searchInput: {
     flex: 1,
-    marginLeft: 10,
-    fontSize: 16,
-    color: '#333',
+    marginLeft: Spacing.sm,
+    fontSize: Typography.base,
+    color: Colors.textPrimary,
   },
   closeButton: {
-    padding: 8,
+    padding: Spacing.sm,
   },
   searchDropdownContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: Spacing.base,
+    paddingBottom: Spacing.base,
   },
   quickSearchSection: {
-    marginTop: 20,
-    marginBottom: 30,
+    marginTop: Spacing.base,
+    marginBottom: Spacing.xl,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
+    fontSize: Typography.lg,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginBottom: Spacing.sm,
   },
   quickSearchGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 15,
+    gap: Spacing.sm,
   },
   quickSearchItem: {
     alignItems: 'center',
@@ -640,48 +613,48 @@ const styles = StyleSheet.create({
   quickSearchIcon: {
     width: 50,
     height: 50,
-    borderRadius: 25,
+    borderRadius: BorderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: Spacing.sm,
   },
   quickSearchLabel: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: Typography.xs,
+    color: Colors.textSecondary,
     textAlign: 'center',
   },
   recentSearchSection: {
-    marginBottom: 30,
+    marginBottom: Spacing.xl,
   },
   recentSearchItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: Spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: Colors.borderLight,
   },
   recentSearchText: {
     flex: 1,
-    fontSize: 16,
-    color: '#333',
-    marginLeft: 10,
+    fontSize: Typography.base,
+    color: Colors.textPrimary,
+    marginLeft: Spacing.sm,
   },
   popularSearchSection: {
-    marginBottom: 30,
+    marginBottom: Spacing.xl,
   },
   popularSearchTags: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: Spacing.sm,
   },
   popularSearchTag: {
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: Colors.gray100,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
   },
   popularSearchTagText: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: Typography.sm,
+    color: Colors.textSecondary,
   },
 });

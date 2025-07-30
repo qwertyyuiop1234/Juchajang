@@ -123,6 +123,11 @@ export default function ParkingDetailScreen() {
     // 길찾기 로직
   };
 
+  const handleReview = () => {
+    // 리뷰 페이지로 이동
+    router.push(`/review?parkingId=${parkingInfo.id}&parkingName=${parkingInfo.name}` as any);
+  };
+
   const getBarColor = (value: number) => {
     if (value >= 80) return '#4CAF50';
     if (value >= 50) return '#FF9800';
@@ -297,6 +302,24 @@ export default function ParkingDetailScreen() {
                 trackColor={{ false: '#e0e0e0', true: '#007AFF' }}
                 thumbColor={notificationsEnabled ? '#fff' : '#f4f3f4'}
               />
+            </View>
+          </View>
+
+          {/* 리뷰 섹션 */}
+          <View style={styles.infoSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>리뷰</Text>
+              <TouchableOpacity style={styles.reviewButton} onPress={handleReview}>
+                <Ionicons name="create-outline" size={16} color="#007AFF" />
+                <Text style={styles.reviewButtonText}>리뷰 작성</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.ratingSection}>
+              <View style={styles.rating}>
+                <Ionicons name="star" size={16} color="#FFD700" />
+                <Text style={styles.ratingText}>{parkingInfo.rating}</Text>
+                <Text style={styles.reviewCount}>({parkingInfo.totalReviews}개 리뷰)</Text>
+              </View>
             </View>
           </View>
         </ScrollView>
@@ -581,6 +604,26 @@ const styles = StyleSheet.create({
   reservationText: {
     color: 'white',
     fontSize: 14,
+    fontWeight: '500',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  reviewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: '#e0f7fa',
+    borderRadius: 20,
+  },
+  reviewButtonText: {
+    fontSize: 12,
+    color: '#007AFF',
     fontWeight: '500',
   },
 }); 

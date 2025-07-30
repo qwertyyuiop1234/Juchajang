@@ -1,58 +1,46 @@
 import React from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useFavorites } from '../../contexts/FavoritesContext';
+import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../../constants/Styles';
 
 export default function FavoritesScreen() {
   const router = useRouter();
   const { favorites, removeFavorite, isLoading } = useFavorites();
 
+  const handleRemoveFavorite = (id: number, name: string) => {
+    Alert.alert(
+      '즐겨찾기 삭제',
+      `"${name}"을(를) 즐겨찾기에서 삭제하시겠습니까?`,
+      [
+        {
+          text: '취소',
+          style: 'cancel',
+        },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: () => {
+            removeFavorite(id);
+            Alert.alert('삭제되었습니다.');
+          },
+        },
+      ]
+    );
+  };
+
   const navigateToDetail = (id: number) => {
     router.push(`/parking-detail?id=${id}` as any);
   };
 
-  const handleRemoveFavorite = (id: number) => {
-    removeFavorite(id);
-  };
-
-  // 로딩 중일 때
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>즐겨찾기</Text>
-          <Text style={styles.headerSubtitle}>로딩 중...</Text>
-        </View>
-        
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>즐겨찾기 로딩 중...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // 즐겨찾기가 없을 때
-  if (favorites.length === 0) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>즐겨찾기</Text>
-          <Text style={styles.headerSubtitle}>저장한 주차장 0개</Text>
-        </View>
-        
-        <View style={styles.emptyState}>
-          <Ionicons name="heart-outline" size={64} color="#ccc" />
-          <Text style={styles.emptyTitle}>저장된 주차장이 없습니다</Text>
-          <Text style={styles.emptySubtitle}>주차장을 찾아서 즐겨찾기에 추가해보세요</Text>
-          <TouchableOpacity 
-            style={styles.findButton}
-            onPress={() => router.push('/(tabs)/' as any)}
-          >
-            <Text style={styles.findButtonText}>주차장 찾기</Text>
-          </TouchableOpacity>
+          <Ionicons name="refresh" size={32} color={Colors.primary} />
+          <Text style={styles.loadingText}>즐겨찾기를 불러오는 중...</Text>
         </View>
       </SafeAreaView>
     );
@@ -60,59 +48,109 @@ export default function FavoritesScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* 헤더 */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>즐겨찾기</Text>
-        <Text style={styles.headerSubtitle}>저장한 주차장 {favorites.length}개</Text>
+        <TouchableOpacity style={styles.sortButton}>
+          <Ionicons name="funnel-outline" size={24} color={Colors.textPrimary} />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.parkingList}>
-        {favorites.map((parkingLot) => (
-          <TouchableOpacity
-            key={parkingLot.id}
-            style={styles.parkingCard}
-            onPress={() => navigateToDetail(parkingLot.id)}
-          >
-            <View style={[styles.statusIndicator, { backgroundColor: parkingLot.statusColor }]} />
-            
-            <View style={styles.cardContent}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.parkingName}>{parkingLot.name}</Text>
+      {/* 즐겨찾기 목록 */}
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {favorites.length > 0 ? (
+          favorites.map((parking) => (
+            <View key={parking.id} style={styles.favoriteCard}>
+              <TouchableOpacity
+                style={styles.cardContent}
+                onPress={() => navigateToDetail(parking.id)}
+              >
+                <View style={styles.parkingInfo}>
+                  <View style={styles.parkingHeader}>
+                    <Text style={styles.parkingName}>{parking.name}</Text>
+                    <View style={[styles.statusBadge, { backgroundColor: parking.statusColor }]}>
+                      <Text style={styles.statusText}>{parking.status}</Text>
+                    </View>
+                  </View>
+                  
+                  <Text style={styles.parkingAddress}>{parking.address}</Text>
+                  
+                  <View style={styles.parkingDetails}>
+                    <View style={styles.detailItem}>
+                      <Ionicons name="location" size={14} color={Colors.primary} />
+                      <Text style={styles.detailText}>{parking.distance}</Text>
+                    </View>
+                    <View style={styles.detailItem}>
+                      <Ionicons name="time" size={14} color={Colors.success} />
+                      <Text style={styles.detailText}>{parking.time}</Text>
+                    </View>
+                    <View style={styles.detailItem}>
+                      <Ionicons name="star" size={14} color="#FFD700" />
+                      <Text style={styles.detailText}>{parking.rating}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.parkingFooter}>
+                    <Text style={styles.priceText}>{parking.price}</Text>
+                    <Text style={styles.availabilityText}>
+                      {parking.available}자리 / {parking.total}자리
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+              
+              <View style={styles.cardActions}>
                 <TouchableOpacity
-                  style={styles.removeButton}
-                  onPress={() => handleRemoveFavorite(parkingLot.id)}
+                  style={styles.actionButton}
+                  onPress={() => navigateToDetail(parking.id)}
                 >
-                  <Ionicons name="heart" size={20} color="#FF6B6B" />
+                  <Ionicons name="information-circle" size={16} color={Colors.info} />
+                  <Text style={[styles.actionButtonText, { color: Colors.info }]}>
+                    상세보기
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => {
+                    // 예약 기능 (향후 구현)
+                    Alert.alert('예약 기능', '예약 기능은 곧 구현될 예정입니다.');
+                  }}
+                >
+                  <Ionicons name="calendar" size={16} color={Colors.primary} />
+                  <Text style={styles.actionButtonText}>예약하기</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => handleRemoveFavorite(parking.id, parking.name)}
+                >
+                  <Ionicons name="trash" size={16} color={Colors.error} />
+                  <Text style={[styles.actionButtonText, { color: Colors.error }]}>
+                    삭제
+                  </Text>
                 </TouchableOpacity>
               </View>
-              
-              <Text style={styles.address}>{parkingLot.address}</Text>
-              
-              <View style={styles.cardFooter}>
-                <View style={styles.infoRow}>
-                  <View style={styles.infoItem}>
-                    <Ionicons name="location" size={14} color="#007AFF" />
-                    <Text style={styles.infoText}>{parkingLot.distance}</Text>
-                  </View>
-                  <View style={styles.infoItem}>
-                    <Ionicons name="time" size={14} color="#4CAF50" />
-                    <Text style={styles.infoText}>{parkingLot.time}</Text>
-                  </View>
-                  <View style={styles.infoItem}>
-                    <Ionicons name="star" size={14} color="#FFD700" />
-                    <Text style={styles.infoText}>{parkingLot.rating}</Text>
-                  </View>
-                </View>
-                
-                <View style={styles.statusRow}>
-                  <View style={[styles.statusTag, { backgroundColor: parkingLot.statusColor }]}>
-                    <Text style={styles.statusText}>{parkingLot.status}</Text>
-                  </View>
-                  <Text style={styles.priceText}>{parkingLot.price}</Text>
-                </View>
-              </View>
             </View>
-          </TouchableOpacity>
-        ))}
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIcon}>
+              <Ionicons name="heart-outline" size={64} color={Colors.textTertiary} />
+            </View>
+            <Text style={styles.emptyTitle}>즐겨찾기가 없습니다</Text>
+            <Text style={styles.emptyDescription}>
+              주차장을 찾아서 하트를 눌러보세요
+            </Text>
+            <TouchableOpacity 
+              style={styles.emptyButton}
+              onPress={() => router.push('/(tabs)/parking' as any)}
+            >
+              <Ionicons name="search" size={16} color={Colors.white} />
+              <Text style={styles.emptyButtonText}>주차장 찾기</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -121,24 +159,115 @@ export default function FavoritesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: Colors.background,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.sm,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
+    fontSize: Typography.xl,
+    fontWeight: '600',
+    color: Colors.textPrimary,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#666',
+  sortButton: {
+    padding: Spacing.sm,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: Spacing.base,
+  },
+  favoriteCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
+    marginBottom: Spacing.base,
+    overflow: 'hidden',
+    ...Shadows.base,
+  },
+  cardContent: {
+    padding: Spacing.base,
+  },
+  parkingInfo: {
+    flex: 1,
+  },
+  parkingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: Spacing.sm,
+  },
+  parkingName: {
+    fontSize: Typography.lg,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    flex: 1,
+  },
+  statusBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+  },
+  statusText: {
+    fontSize: Typography.xs,
+    color: Colors.white,
+    fontWeight: '500',
+  },
+  parkingAddress: {
+    fontSize: Typography.sm,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.sm,
+  },
+  parkingDetails: {
+    flexDirection: 'row',
+    marginBottom: Spacing.sm,
+  },
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: Spacing.base,
+  },
+  detailText: {
+    fontSize: Typography.xs,
+    color: Colors.textSecondary,
+    marginLeft: Spacing.xs,
+  },
+  parkingFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  priceText: {
+    fontSize: Typography.base,
+    fontWeight: '600',
+    color: Colors.error,
+  },
+  availabilityText: {
+    fontSize: Typography.xs,
+    color: Colors.primary,
+    fontWeight: '500',
+  },
+  cardActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+    paddingTop: Spacing.base,
+    paddingBottom: Spacing.sm,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.base,
+  },
+  actionButtonText: {
+    fontSize: Typography.sm,
+    color: Colors.primary,
+    fontWeight: '500',
+    marginLeft: Spacing.xs,
   },
   loadingContainer: {
     flex: 1,
@@ -146,120 +275,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
-  },
-  parkingList: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 10,
-  },
-  parkingCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    flexDirection: 'row',
-    overflow: 'hidden',
-  },
-  statusIndicator: {
-    width: 4,
-    backgroundColor: '#4CAF50',
-  },
-  cardContent: {
-    flex: 1,
-    padding: 16,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  parkingName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    flex: 1,
-  },
-  removeButton: {
-    padding: 4,
-  },
-  address: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
-  },
-  cardFooter: {
-    gap: 8,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  infoText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  statusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  statusTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 10,
-    color: 'white',
-    fontWeight: '500',
-  },
-  priceText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#FF6B6B',
+    fontSize: Typography.base,
+    color: Colors.textSecondary,
+    marginTop: Spacing.base,
   },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing['3xl'],
+  },
+  emptyIcon: {
+    marginBottom: Spacing.base,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 16,
-    marginBottom: 8,
+    fontSize: Typography.lg,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginBottom: Spacing.sm,
   },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#666',
+  emptyDescription: {
+    fontSize: Typography.base,
+    color: Colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
+    marginBottom: Spacing.xl,
   },
-  findButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+  emptyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.base,
+    borderRadius: BorderRadius.full,
   },
-  findButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '500',
+  emptyButtonText: {
+    fontSize: Typography.base,
+    color: Colors.white,
+    fontWeight: '600',
+    marginLeft: Spacing.sm,
   },
 }); 
