@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   StyleSheet,
   View,
@@ -7,7 +7,11 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
+  Alert,
+  Platform,
+  Linking,
 } from "react-native";
+import * as Location from "expo-location";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -22,6 +26,12 @@ import {
 import { NaverMapView } from "@mj-studio/react-native-naver-map";
 
 export default function HomeScreen() {
+  // Initial camera
+  const INITIAL_CAMERA = {
+    latitude: 37.5666102, // 서울 중심부 위도
+    longitude: 126.9783881, // 서울 중심부 경도
+    zoom: 12, // 줌 레벨
+  };
   const router = useRouter();
   const { isFavorite, addFavorite, removeFavorite, isLoading } = useFavorites();
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
@@ -32,6 +42,129 @@ export default function HomeScreen() {
     "선릉역",
     "테헤란로",
   ]);
+  // variables for location, errormsg
+  const [location, setLocation] = useState<Location.LocationObject | null>(
+    null
+  );
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [mapCamera, setMapCamera] = useState(INITIAL_CAMERA);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [locationWatcher, setLocationWatcher] =
+    useState<Location.LocationSubscription | null>(null);
+  const mapRef = useRef<any>(null);
+
+  /**
+   * This function is for checking permission of getting current location information of users.
+   *
+   * @param showLoading
+   * @returns
+   */
+  const isPermissionOfCurrentLocationOn = async (showLoading = true) => {
+    if (showLoading) setIsGettingLocation(true);
+
+    //Location permission
+    let { status } = await Location.requestForegroundPermissionsAsync();
+
+    if (status !== "granted") {
+      setErrorMsg("위치 정보 접근 권한이 필요합니다.");
+      Alert.alert(
+        "위치 권한 필요",
+        "현재 위치를 사용하려면 위치 권한을 혀용해 주세요.",
+        [
+          { text: "취소", style: "cancel" },
+          { text: "설정으로 이동", onPress: () => Linking.openSettings() },
+        ]
+      );
+      return null;
+    }
+  };
+
+  const getCurrentLocation = async (showLoading = true) => {
+    try {
+      if (showLoading) setIsGettingLocation(true);
+      //1. Check loaction
+      const permission = await isPermissionOfCurrentLocationOn();
+      if (permission === null) return null;
+
+      //2. Take current location
+      const currentLocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      setLocation(currentLocation);
+      setErrorMsg(null);
+      return currentLocation;
+    } catch (error) {
+      console.log("위치 가져오기 실패: ", error);
+      setErrorMsg("위치 정보를 가져올 수 없습니다.");
+      Alert.alert("오류", "위치 정보를 가져올 수 없습니다. 다시 시도해주세요.");
+      return null;
+    } finally {
+      if (showLoading) setIsGettingLocation(false);
+    }
+  };
+
+  // Location Tracking
+  const startLocationTracking = async () => {
+    try {
+      //1. Check loaction
+      const permission = await isPermissionOfCurrentLocationOn();
+      if (permission === null) return null;
+
+      let { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== "granted") return;
+
+      if (locationWatcher) {
+        locationWatcher.remove();
+      }
+
+      const subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.BestForNavigation,
+          distanceInterval: 10,
+          timeInterval: 5000,
+        },
+        (newLocation) => {
+          setLocation(newLocation);
+        }
+      );
+      setLocationWatcher(subscription);
+    } catch (error) {
+      console.error("위치 추적 실패: ", error);
+    }
+  };
+
+  useEffect(() => {
+    startLocationTracking();
+    return () => {
+      if (locationWatcher) {
+        locationWatcher.remove();
+      }
+    };
+  }, []);
+
+  const moveToLocation = (
+    latitude: number,
+    longitude: number,
+    zoom: number = 15
+  ) => {
+    console.log("이동할 위치:", latitude, longitude, zoom);
+    if (mapRef.current) {
+      // 네이버 맵 카메라 이동
+      mapRef.current.animateCameraTo({
+        latitude,
+        longitude,
+        zoom,
+        duration: 1000, // 1초 애니메이션
+      });
+    }
+
+    // 상태도 업데이트
+    setMapCamera({
+      latitude,
+      longitude,
+      zoom,
+    });
+  };
 
   // 주차장 데이터 (실제로는 API에서 받아올 데이터)
   const parkingLots: ParkingLot[] = [
@@ -118,6 +251,60 @@ export default function HomeScreen() {
     console.log("음성 검색 시작");
   };
 
+  // 현재 위치로 이동 (개선된 버전)
+  const handleLocationPress = async () => {
+    try {
+      console.log("현재 위치 버튼 클릭");
+
+      //1. Check loaction
+      const permission = await isPermissionOfCurrentLocationOn();
+      if (permission === null) return null;
+
+      // 이미 위치 정보가 있으면 바로 이동
+      if (location && !isGettingLocation) {
+        console.log("기존 위치 사용:", location.coords);
+        moveToLocation(location.coords.latitude, location.coords.longitude, 16);
+        return;
+      }
+
+      // 위치 정보가 없으면 새로 가져오기
+      const currentLocation = await getCurrentLocation(true);
+      if (currentLocation) {
+        console.log("새로운 위치:", currentLocation.coords);
+        moveToLocation(
+          currentLocation.coords.latitude,
+          currentLocation.coords.longitude,
+          16
+        );
+      }
+    } catch (error) {
+      console.error("현재 위치로 이동 실패:", error);
+      Alert.alert("오류", "현재 위치로 이동할 수 없습니다.");
+    }
+  };
+
+  // 초기 위치 설정 (앱 시작 시 한 번만)
+  const setInitialLocation = async () => {
+    const currentLocation = await getCurrentLocation(false);
+    if (currentLocation) {
+      setMapCamera({
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude,
+        zoom: 14,
+      });
+    }
+  };
+
+  // 앱 시작 시 초기 위치 설정
+  useEffect(() => {
+    setInitialLocation();
+  }, []);
+
+  // 위치 정보 새로고침
+  const refreshLocation = async () => {
+    await getCurrentLocation(true);
+  };
+
   const quickSearchItems = [
     { icon: "car", label: "주차장", color: Colors.primary },
     { icon: "business", label: "백화점", color: Colors.success },
@@ -127,21 +314,21 @@ export default function HomeScreen() {
     { icon: "home", label: "집", color: "#607D8B" },
   ];
 
-  // Initial camera
-  const INITIAL_CAMERA = {
-    latitude: 37.5666102, // 서울 중심부 위도
-    longitude: 126.9783881, // 서울 중심부 경도
-    zoom: 12, // 줌 레벨
-  };
-
   return (
     <View style={styles.container}>
+      {/* naver map - 배경 */}
       <NaverMapView
+        ref={mapRef}
         style={styles.map}
         initialCamera={INITIAL_CAMERA}
+        mapType="Navi"
+        isNightModeEnabled={false}
+        isScrollGesturesEnabled={true}
+        isShowLocationButton={false}
       ></NaverMapView>
-      {/* 상단 UI 레이어 */}
-      <SafeAreaView style={styles.safeArea}>
+
+      {/* UI 레이어 - 맵 위에 오버레이 */}
+      <SafeAreaView style={styles.safeArea} pointerEvents="box-none">
         {/* 검색 섹션 */}
         <View style={styles.searchSection}>
           <TouchableOpacity
@@ -275,6 +462,14 @@ export default function HomeScreen() {
           </View>
         )}
 
+        {/* 현재 위치 버튼 */}
+        <TouchableOpacity
+          style={styles.locationButton}
+          onPress={handleLocationPress}
+        >
+          <Ionicons name="location" size={24} color={Colors.primary} />
+        </TouchableOpacity>
+
         {/* 주차장 목록 - 하단에 고정 */}
         <View style={styles.parkingSection}>
           <ScrollView
@@ -355,6 +550,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+    position: "relative",
   },
   mapBackground: {
     position: "absolute",
@@ -480,7 +676,12 @@ const styles = StyleSheet.create({
     ...Shadows.lg,
   },
   safeArea: {
-    flex: 1,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
   },
   searchSection: {
     paddingHorizontal: Spacing.base,
@@ -493,6 +694,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    zIndex: 1000,
   },
   searchBar: {
     flexDirection: "row",
@@ -520,6 +722,7 @@ const styles = StyleSheet.create({
   parkingListContent: {
     paddingHorizontal: Spacing.base,
     paddingTop: Spacing.sm,
+    paddingBottom: 80,
     gap: Spacing.sm,
   },
   parkingCard: {
@@ -529,6 +732,7 @@ const styles = StyleSheet.create({
     width: 280,
     marginRight: Spacing.sm,
     ...Shadows.base,
+    opacity: 0.8,
   },
   cardHeader: {
     flexDirection: "row",
@@ -713,6 +917,21 @@ const styles = StyleSheet.create({
 
   //map
   map: {
-    flex: 1,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
+  },
+  locationButton: {
+    position: "absolute",
+    left: Spacing.base,
+    bottom: "28%",
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.full,
+    padding: Spacing.sm,
+    ...Shadows.base,
+    zIndex: 100,
   },
 });
