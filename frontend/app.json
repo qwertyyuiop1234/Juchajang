@@ -9,7 +9,6 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "deploymentTarget": "13.0",
       "supportsTablet": true,
       "bundleIdentifier": "com.coma.jca",
       "infoPlist": {

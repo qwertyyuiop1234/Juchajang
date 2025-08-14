@@ -120,7 +120,17 @@ export default function ParkingDetailScreen() {
   };
 
   const handleNavigation = () => {
-    // 길찾기 로직
+    // 주차장 좌표 (실제로는 API에서 받아와야 함)
+    const parkingCoordinates = {
+      1: { lat: 37.4979462, lng: 127.0279958 }, // 강남역 지하주차장
+      2: { lat: 37.5009451, lng: 127.0355893 }, // 역삼역 공영주차장  
+      3: { lat: 37.5044085, lng: 127.0475235 }, // 선릉역 백화점 주차장
+      4: { lat: 37.5070822, lng: 127.0628388 }, // 테헤란로 지상주차장
+    };
+
+    const coords = parkingCoordinates[parkingInfo.id as keyof typeof parkingCoordinates] || parkingCoordinates[1];
+    
+    router.push(`/navigation?destinationLat=${coords.lat}&destinationLng=${coords.lng}&destinationName=${encodeURIComponent(parkingInfo.name)}` as any);
   };
 
   const handleReview = () => {

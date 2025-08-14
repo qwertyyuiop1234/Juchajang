@@ -23,7 +23,13 @@ import {
   BorderRadius,
   Shadows,
 } from "../../constants/Styles";
-import { NaverMapView } from "@mj-studio/react-native-naver-map";
+import {
+  NaverMapView,
+  NaverMapMarkerOverlay,
+  NaverMapPolylineOverlay,
+} from "@mj-studio/react-native-naver-map";
+import { Icons } from "../../constants/Icon";
+import navigationAPI from "../../services/navigationAPI";
 
 export default function HomeScreen() {
   // Initial camera
@@ -36,135 +42,16 @@ export default function HomeScreen() {
   const { isFavorite, addFavorite, removeFavorite, isLoading } = useFavorites();
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
   const [searchText, setSearchText] = useState("");
-  const [recentSearches, setRecentSearches] = useState([
-    "강남역",
-    "역삼역",
-    "선릉역",
-    "테헤란로",
-  ]);
-  // variables for location, errormsg
-  const [location, setLocation] = useState<Location.LocationObject | null>(
-    null
-  );
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [mapCamera, setMapCamera] = useState(INITIAL_CAMERA);
-  const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [locationWatcher, setLocationWatcher] =
-    useState<Location.LocationSubscription | null>(null);
-  const mapRef = useRef<any>(null);
-
-  /**
-   * This function is for checking permission of getting current location information of users.
-   *
-   * @param showLoading
-   * @returns
-   */
-  const isPermissionOfCurrentLocationOn = async (showLoading = true) => {
-    if (showLoading) setIsGettingLocation(true);
-
-    //Location permission
-    let { status } = await Location.requestForegroundPermissionsAsync();
-
-    if (status !== "granted") {
-      setErrorMsg("위치 정보 접근 권한이 필요합니다.");
-      Alert.alert(
-        "위치 권한 필요",
-        "현재 위치를 사용하려면 위치 권한을 혀용해 주세요.",
-        [
-          { text: "취소", style: "cancel" },
-          { text: "설정으로 이동", onPress: () => Linking.openSettings() },
-        ]
-      );
-      return null;
-    }
-  };
-
-  const getCurrentLocation = async (showLoading = true) => {
-    try {
-      if (showLoading) setIsGettingLocation(true);
-      //1. Check loaction
-      const permission = await isPermissionOfCurrentLocationOn();
-      if (permission === null) return null;
-
-      //2. Take current location
-      const currentLocation = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      setLocation(currentLocation);
-      setErrorMsg(null);
-      return currentLocation;
-    } catch (error) {
-      console.log("위치 가져오기 실패: ", error);
-      setErrorMsg("위치 정보를 가져올 수 없습니다.");
-      Alert.alert("오류", "위치 정보를 가져올 수 없습니다. 다시 시도해주세요.");
-      return null;
-    } finally {
-      if (showLoading) setIsGettingLocation(false);
-    }
-  };
-
-  // Location Tracking
-  const startLocationTracking = async () => {
-    try {
-      //1. Check loaction
-      const permission = await isPermissionOfCurrentLocationOn();
-      if (permission === null) return null;
-
-      let { status } = await Location.getForegroundPermissionsAsync();
-      if (status !== "granted") return;
-
-      if (locationWatcher) {
-        locationWatcher.remove();
-      }
-
-      const subscription = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.BestForNavigation,
-          distanceInterval: 10,
-          timeInterval: 5000,
-        },
-        (newLocation) => {
-          setLocation(newLocation);
-        }
-      );
-      setLocationWatcher(subscription);
-    } catch (error) {
-      console.error("위치 추적 실패: ", error);
-    }
-  };
-
-  useEffect(() => {
-    startLocationTracking();
-    return () => {
-      if (locationWatcher) {
-        locationWatcher.remove();
-      }
-    };
-  }, []);
-
-  const moveToLocation = (
-    latitude: number,
-    longitude: number,
-    zoom: number = 15
-  ) => {
-    console.log("이동할 위치:", latitude, longitude, zoom);
-    if (mapRef.current) {
-      // 네이버 맵 카메라 이동
-      mapRef.current.animateCameraTo({
-        latitude,
-        longitude,
-        zoom,
-        duration: 1000, // 1초 애니메이션
-      });
-    }
-
-    // 상태도 업데이트
-    setMapCamera({
-      latitude,
-      longitude,
-      zoom,
-    });
-  };
+  const [recentSearches] = useState(["강남역", "역삼역", "선릉역", "테헤란로"]);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchMarkers, setSearchMarkers] = useState<any[]>([]);
+  const [selectedDestination, setSelectedDestination] = useState<any>(null);
+  const [nearbyParkingLots, setNearbyParkingLots] = useState<any[]>([]);
+  const [destinationMarker, setDestinationMarker] = useState<any>(null);
+  const [currentRoute, setCurrentRoute] = useState<any>(null);
+  const [routePolyline, setRoutePolyline] = useState<{latitude: number, longitude: number}[]>([]);
+  const [showRouteOptions, setShowRouteOptions] = useState(false);
 
   // 주차장 데이터 (실제로는 API에서 받아올 데이터)
   const parkingLots: ParkingLot[] = [
@@ -226,6 +113,145 @@ export default function HomeScreen() {
     },
   ];
 
+  // variables for location, errormsg
+  const [location, setLocation] = useState<Location.LocationObject | null>(
+    null
+  );
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [mapCamera, setMapCamera] = useState(INITIAL_CAMERA);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [locationWatcher, setLocationWatcher] =
+    useState<Location.LocationSubscription | null>(null);
+  const [zoom, setZoom] = useState(15); // 초기 줌
+  const mapRef = useRef<any>(null);
+
+  /**
+   * This function is for checking permission of getting current location information of users.
+   *
+   * @param showLoading
+   * @returns
+   */
+  const isPermissionOfCurrentLocationOn = async (showLoading = true) => {
+    if (showLoading) setIsGettingLocation(true);
+
+    //Location permission
+    let { status } = await Location.requestForegroundPermissionsAsync();
+
+    if (status !== "granted") {
+      setErrorMsg("위치 정보 접근 권한이 필요합니다.");
+      Alert.alert(
+        "위치 권한 필요",
+        "현재 위치를 사용하려면 위치 권한을 허용해 주세요.",
+        [
+          { text: "취소", style: "cancel" },
+          { text: "설정으로 이동", onPress: () => Linking.openSettings() },
+        ]
+      );
+      return null;
+    }
+
+    return true;
+  };
+
+  const getCurrentLocation = async (showLoading = true) => {
+    try {
+      if (showLoading) setIsGettingLocation(true);
+      //1. Check loaction
+      const permission = await isPermissionOfCurrentLocationOn();
+      if (permission === null) return null;
+
+      //2. Take current location
+      const currentLocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      setLocation(currentLocation);
+      setErrorMsg(null);
+      return currentLocation;
+    } catch (error) {
+      console.log("위치 가져오기 실패: ", error);
+      setErrorMsg("위치 정보를 가져올 수 없습니다.");
+      Alert.alert("오류", "위치 정보를 가져올 수 없습니다. 다시 시도해주세요.");
+      return null;
+    } finally {
+      if (showLoading) setIsGettingLocation(false);
+    }
+  };
+
+  // Location Tracking
+  const startLocationTracking = async () => {
+    try {
+      //1. Check permission
+      const permission = await isPermissionOfCurrentLocationOn();
+      if (permission === null) return null;
+
+      let { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== "granted") return;
+
+      if (locationWatcher) {
+        locationWatcher.remove();
+      }
+
+      const subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.BestForNavigation,
+          distanceInterval: 10,
+          timeInterval: 1000,
+        },
+        (newLocation) => {
+          console.log(
+            "새로운 위치:",
+            JSON.stringify(newLocation.coords, null, 2)
+          );
+          setLocation(newLocation);
+        }
+      );
+      setLocationWatcher(subscription);
+    } catch (error) {
+      console.error("위치 추적 실패: ", error);
+    }
+  };
+
+  useEffect(() => {
+    startLocationTracking();
+    return () => {
+      if (locationWatcher) {
+        locationWatcher.remove();
+      }
+    };
+  }, []);
+
+  /**
+   * This function is move to specific location.
+   * This also move camera to specific location.
+   *
+   * @param latitude
+   * @param longitude
+   * @param zoom
+   */
+  const moveToLocation = (
+    latitude: number,
+    longitude: number,
+    zoom: number = 15
+  ) => {
+    console.log("이동할 위치:", latitude, longitude, zoom);
+    if (mapRef.current) {
+      // 네이버 맵 카메라 이동
+      mapRef.current.animateCameraTo({
+        latitude,
+        longitude,
+        zoom,
+        duration: 1000, // 1초 애니메이션
+      });
+    }
+
+    // 상태도 업데이트
+    setMapCamera({
+      latitude,
+      longitude,
+      zoom,
+    });
+  };
+
   const navigateToDetail = (id: number) => {
     router.push(`/parking-detail?id=${id}` as any);
   };
@@ -242,13 +268,255 @@ export default function HomeScreen() {
     setIsSearchModalVisible(true);
   };
 
+  const performSearch = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setIsSearching(true);
+      const results = await navigationAPI.searchPlace(query, 10);
+      setSearchResults(results.items);
+    } catch (error) {
+      console.error("검색 에러:", error);
+      Alert.alert("검색 실패", "검색 중 오류가 발생했습니다.");
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   const handleSearchItemPress = (searchTerm: string) => {
     setSearchText(searchTerm);
-    setIsSearchModalVisible(false);
+    performSearch(searchTerm);
+  };
+
+  const handleSearchResultPress = async (result: any) => {
+    try {
+      // 목적지 설정
+      setSelectedDestination(result);
+
+      // 검색 결과 위치로 지도 이동
+      moveToLocation(result.mapy, result.mapx, 15);
+
+      // 목적지 마커 설정
+      const newDestinationMarker = {
+        id: `destination_${Date.now()}`,
+        latitude: result.mapy,
+        longitude: result.mapx,
+        title: result.title,
+        address: result.roadAddress || result.address,
+        type: "destination",
+      };
+
+      console.log("🎯 목적지 마커:", newDestinationMarker);
+      setDestinationMarker(newDestinationMarker);
+      
+      // 현재 위치에서 목적지까지의 경로 계산
+      await calculateRouteToDestination(result);
+
+      try {
+        // 실제 주변 주차장 검색
+        console.log("🔍 실제 주변 주차장 검색 중...", result.mapy, result.mapx);
+        const nearbyParking = await navigationAPI.searchNearbyParkingLots(
+          result.mapy,
+          result.mapx,
+          2000 // 2km 반경으로 증가
+        );
+
+        console.log("🅿️ 찾은 주차장:", nearbyParking);
+
+        if (nearbyParking.parkingLots && nearbyParking.parkingLots.length > 0) {
+          // 실제 API 결과 사용 - 최대 3개만
+          const limitedParkingLots = nearbyParking.parkingLots.slice(0, 3);
+          setNearbyParkingLots(limitedParkingLots);
+
+          // 주차장 마커들만 설정 (목적지 마커는 별도 관리)
+          const parkingMarkers = limitedParkingLots.map((lot, index) => ({
+            id: `parking_${Date.now()}_${index}`,
+            latitude: lot.mapy,
+            longitude: lot.mapx,
+            title: lot.title,
+            address: lot.roadAddress || lot.address,
+            distance: lot.distance,
+            type: "parking",
+          }));
+
+          console.log("📍 주차장 마커들:", parkingMarkers);
+          setSearchMarkers(parkingMarkers);
+        } else {
+          // API 결과가 없으면 더미 데이터 사용 - 3개
+          console.log("⚠️ API 결과 없음, 더미 데이터 사용");
+          const dummyParkingLots = [
+            {
+              title: "근처 주차장 1",
+              address: "검색된 위치 근처",
+              roadAddress: "검색된 위치 근처",
+              mapy: result.mapy + 0.001,
+              mapx: result.mapx + 0.001,
+              distance: 100,
+              category: "주차장",
+            },
+            {
+              title: "근처 주차장 2",
+              address: "검색된 위치 근처",
+              roadAddress: "검색된 위치 근처",
+              mapy: result.mapy - 0.001,
+              mapx: result.mapx - 0.001,
+              distance: 200,
+              category: "주차장",
+            },
+            {
+              title: "근처 주차장 3",
+              address: "검색된 위치 근처",
+              roadAddress: "검색된 위치 근처",
+              mapy: result.mapy + 0.0005,
+              mapx: result.mapx - 0.0015,
+              distance: 150,
+              category: "주차장",
+            },
+          ];
+
+          setNearbyParkingLots(dummyParkingLots);
+
+          // 주차장 마커들만 설정
+          const parkingMarkers = dummyParkingLots.map((lot, index) => ({
+            id: `parking_${Date.now()}_${index}`,
+            latitude: lot.mapy,
+            longitude: lot.mapx,
+            title: lot.title,
+            address: lot.roadAddress || lot.address,
+            distance: lot.distance,
+            type: "parking",
+          }));
+
+          setSearchMarkers(parkingMarkers);
+        }
+      } catch (apiError) {
+        console.error("API 호출 실패, 더미 데이터 사용:", apiError);
+        // API 실패 시 더미 데이터로 폴백 - 3개
+        const dummyParkingLots = [
+          {
+            title: "근처 주차장 1 (더미)",
+            address: "API 연결 실패",
+            roadAddress: "API 연결 실패",
+            mapy: result.mapy + 0.001,
+            mapx: result.mapx + 0.001,
+            distance: 100,
+            category: "주차장",
+          },
+          {
+            title: "근처 주차장 2 (더미)",
+            address: "API 연결 실패",
+            roadAddress: "API 연결 실패",
+            mapy: result.mapy - 0.001,
+            mapx: result.mapx + 0.0005,
+            distance: 150,
+            category: "주차장",
+          },
+          {
+            title: "근처 주차장 3 (더미)",
+            address: "API 연결 실패",
+            roadAddress: "API 연결 실패",
+            mapy: result.mapy + 0.0005,
+            mapx: result.mapx - 0.001,
+            distance: 120,
+            category: "주차장",
+          },
+        ];
+
+        setNearbyParkingLots(dummyParkingLots);
+
+        // 주차장 마커들만 설정
+        const parkingMarkers = dummyParkingLots.map((lot, index) => ({
+          id: `parking_${Date.now()}_${index}`,
+          latitude: lot.mapy,
+          longitude: lot.mapx,
+          title: lot.title,
+          address: lot.roadAddress || lot.address,
+          distance: lot.distance,
+          type: "parking",
+        }));
+
+        setSearchMarkers(parkingMarkers);
+      }
+
+      setIsSearchModalVisible(false);
+      setSearchText(result.title);
+      
+      // 경로 옵션 표시
+      setShowRouteOptions(true);
+    } catch (error) {
+      console.error("주변 주차장 검색 에러:", error);
+      Alert.alert("오류", "주변 주차장을 찾는 중 오류가 발생했습니다.");
+    }
   };
 
   const handleVoiceSearch = () => {
     console.log("음성 검색 시작");
+  };
+
+  // 목적지까지 경로 계산 함수
+  const calculateRouteToDestination = async (destination: any) => {
+    try {
+      if (!location) {
+        Alert.alert("오류", "현재 위치를 찾을 수 없습니다.");
+        return;
+      }
+
+      console.log("🗺️ 경로 계산 시작:", {
+        start: { latitude: location.coords.latitude, longitude: location.coords.longitude },
+        goal: { latitude: destination.mapy, longitude: destination.mapx }
+      });
+
+      const routeData = await navigationAPI.getDirections({
+        start: {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        },
+        goal: {
+          latitude: destination.mapy,
+          longitude: destination.mapx,
+        },
+        option: "trafast",
+      });
+
+      console.log("✅ 경로 계산 성공:", routeData);
+      setCurrentRoute(routeData);
+      
+      // 폴리라인 데이터 설정
+      if (routeData.polyline && routeData.polyline.length > 0) {
+        setRoutePolyline(routeData.polyline);
+        console.log("📋 폴리라인 설정 완료:", routeData.polyline.length, "개 포인트");
+      }
+    } catch (error) {
+      console.error("❌ 경로 계산 전체 실패:", error);
+      Alert.alert("오류", "경로를 계산할 수 없습니다.");
+    }
+  };
+
+
+  // 네비게이션 시작 함수
+  const handleStartNavigation = () => {
+    if (!selectedDestination || !currentRoute) {
+      Alert.alert("오류", "대상지와 경로 정보가 필요합니다.");
+      return;
+    }
+
+    // 네비게이션 화면으로 이동
+    router.push(`/navigation?destinationLat=${selectedDestination.mapy}&destinationLng=${selectedDestination.mapx}&destinationName=${encodeURIComponent(selectedDestination.title)}` as any);
+  };
+
+  // 경로 삭제 함수
+  const handleClearRoute = () => {
+    setSelectedDestination(null);
+    setDestinationMarker(null);
+    setCurrentRoute(null);
+    setRoutePolyline([]);
+    setShowRouteOptions(false);
+    setSearchMarkers([]);
+    setNearbyParkingLots([]);
   };
 
   // 현재 위치로 이동 (개선된 버전)
@@ -256,7 +524,7 @@ export default function HomeScreen() {
     try {
       console.log("현재 위치 버튼 클릭");
 
-      //1. Check loaction
+      //1. Check permission
       const permission = await isPermissionOfCurrentLocationOn();
       if (permission === null) return null;
 
@@ -300,11 +568,6 @@ export default function HomeScreen() {
     setInitialLocation();
   }, []);
 
-  // 위치 정보 새로고침
-  const refreshLocation = async () => {
-    await getCurrentLocation(true);
-  };
-
   const quickSearchItems = [
     { icon: "car", label: "주차장", color: Colors.primary },
     { icon: "business", label: "백화점", color: Colors.success },
@@ -321,11 +584,62 @@ export default function HomeScreen() {
         ref={mapRef}
         style={styles.map}
         initialCamera={INITIAL_CAMERA}
+        onCameraChanged={(event) => {
+          setZoom(event.zoom ?? 15); // 카메라 줌 레벨 업데이트
+          // console.log(event.zoom);
+        }}
         mapType="Navi"
         isNightModeEnabled={false}
         isScrollGesturesEnabled={true}
         isShowLocationButton={false}
-      ></NaverMapView>
+      >
+        {location && (
+          <NaverMapMarkerOverlay
+            latitude={location.coords.latitude}
+            longitude={location.coords.longitude}
+            image={Icons.reactLogo}
+            width={zoom * 3} // 줌 비율에 맞춘 크기
+            height={zoom * 3}
+          />
+        )}
+
+        {/* 목적지 마커 */}
+        {destinationMarker && (
+          <NaverMapMarkerOverlay
+            latitude={destinationMarker.latitude}
+            longitude={destinationMarker.longitude}
+            width={50}
+            height={50}
+            anchor={{ x: 0.5, y: 1 }}
+          />
+        )}
+
+        {/* 검색 결과 마커들 (주차장) */}
+        {searchMarkers.map((marker) => {
+          console.log(
+            `🗺️ 마커 렌더링: ${marker.type} - ${marker.title} (${marker.latitude}, ${marker.longitude})`
+          );
+          return (
+            <NaverMapMarkerOverlay
+              key={marker.id}
+              latitude={marker.latitude}
+              longitude={marker.longitude}
+              width={40}
+              height={40}
+              anchor={{ x: 0.5, y: 1 }}
+            />
+          );
+        })}
+
+        {/* 경로 폴리라인 */}
+        {routePolyline.length > 0 && (
+          <NaverMapPolylineOverlay
+            coords={routePolyline}
+            width={8}
+            color="#007AFF"
+          />
+        )}
+      </NaverMapView>
 
       {/* UI 레이어 - 맵 위에 오버레이 */}
       <SafeAreaView style={styles.safeArea} pointerEvents="box-none">
@@ -362,7 +676,10 @@ export default function HomeScreen() {
                   style={styles.searchInput}
                   placeholder="장소, 버스, 지하철, 주소 검색"
                   value={searchText}
-                  onChangeText={setSearchText}
+                  onChangeText={(text) => {
+                    setSearchText(text);
+                    performSearch(text);
+                  }}
                   autoFocus={true}
                 />
                 {searchText.length > 0 && (
@@ -387,77 +704,120 @@ export default function HomeScreen() {
               style={styles.searchDropdownContent}
               showsVerticalScrollIndicator={false}
             >
-              {/* 빠른 검색 */}
-              <View style={styles.quickSearchSection}>
-                <Text style={styles.sectionTitle}>빠른 검색</Text>
-                <View style={styles.quickSearchGrid}>
-                  {quickSearchItems.map((item, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={styles.quickSearchItem}
-                      onPress={() => handleSearchItemPress(item.label)}
-                    >
-                      <View
-                        style={[
-                          styles.quickSearchIcon,
-                          { backgroundColor: item.color },
-                        ]}
-                      >
-                        <Ionicons
-                          name={item.icon as any}
-                          size={20}
-                          color="white"
-                        />
-                      </View>
-                      <Text style={styles.quickSearchLabel}>{item.label}</Text>
-                    </TouchableOpacity>
-                  ))}
+              {/* 검색어가 있을 때: 검색 결과만 표시 */}
+              {searchText.length > 0 ? (
+                <View style={styles.searchResultsSection}>
+                  <Text style={styles.sectionTitle}>
+                    검색 결과 {isSearching && "(검색 중...)"}
+                  </Text>
+                  {searchResults.length > 0
+                    ? searchResults.map((result, index) => (
+                        <TouchableOpacity
+                          key={index}
+                          style={styles.searchResultItem}
+                          onPress={() => handleSearchResultPress(result)}
+                        >
+                          <View style={styles.searchResultInfo}>
+                            <Text style={styles.searchResultTitle}>
+                              {result.title}
+                            </Text>
+                            <Text style={styles.searchResultAddress}>
+                              {result.roadAddress || result.address}
+                            </Text>
+                            <Text style={styles.searchResultCategory}>
+                              {result.category}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      ))
+                    : !isSearching && (
+                        <Text style={styles.noResultsText}>
+                          검색 결과가 없습니다.
+                        </Text>
+                      )}
                 </View>
-              </View>
+              ) : (
+                /* 검색어가 없을 때: 빠른검색, 최근검색, 인기검색 표시 */
+                <>
+                  {/* 빠른 검색 */}
+                  <View style={styles.quickSearchSection}>
+                    <Text style={styles.sectionTitle}>빠른 검색</Text>
+                    <View style={styles.quickSearchGrid}>
+                      {quickSearchItems.map((item, index) => (
+                        <TouchableOpacity
+                          key={index}
+                          style={styles.quickSearchItem}
+                          onPress={() => handleSearchItemPress(item.label)}
+                        >
+                          <View
+                            style={[
+                              styles.quickSearchIcon,
+                              { backgroundColor: item.color },
+                            ]}
+                          >
+                            <Ionicons
+                              name={item.icon as any}
+                              size={20}
+                              color="white"
+                            />
+                          </View>
+                          <Text style={styles.quickSearchLabel}>
+                            {item.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
 
-              {/* 최근 검색 */}
-              <View style={styles.recentSearchSection}>
-                <Text style={styles.sectionTitle}>최근 검색</Text>
-                {recentSearches.map((search, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.recentSearchItem}
-                    onPress={() => handleSearchItemPress(search)}
-                  >
-                    <Ionicons
-                      name="time"
-                      size={16}
-                      color={Colors.textSecondary}
-                    />
-                    <Text style={styles.recentSearchText}>{search}</Text>
-                    <TouchableOpacity>
-                      <Ionicons
-                        name="close"
-                        size={16}
-                        color={Colors.textTertiary}
-                      />
-                    </TouchableOpacity>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* 인기 검색 */}
-              <View style={styles.popularSearchSection}>
-                <Text style={styles.sectionTitle}>인기 검색</Text>
-                <View style={styles.popularSearchTags}>
-                  {["강남역", "역삼역", "선릉역", "삼성역", "종합운동장"].map(
-                    (tag, index) => (
+                  {/* 최근 검색 */}
+                  <View style={styles.recentSearchSection}>
+                    <Text style={styles.sectionTitle}>최근 검색</Text>
+                    {recentSearches.map((search, index) => (
                       <TouchableOpacity
                         key={index}
-                        style={styles.popularSearchTag}
-                        onPress={() => handleSearchItemPress(tag)}
+                        style={styles.recentSearchItem}
+                        onPress={() => handleSearchItemPress(search)}
                       >
-                        <Text style={styles.popularSearchTagText}>{tag}</Text>
+                        <Ionicons
+                          name="time"
+                          size={16}
+                          color={Colors.textSecondary}
+                        />
+                        <Text style={styles.recentSearchText}>{search}</Text>
+                        <TouchableOpacity>
+                          <Ionicons
+                            name="close"
+                            size={16}
+                            color={Colors.textTertiary}
+                          />
+                        </TouchableOpacity>
                       </TouchableOpacity>
-                    )
-                  )}
-                </View>
-              </View>
+                    ))}
+                  </View>
+
+                  {/* 인기 검색 */}
+                  <View style={styles.popularSearchSection}>
+                    <Text style={styles.sectionTitle}>인기 검색</Text>
+                    <View style={styles.popularSearchTags}>
+                      {[
+                        "강남역",
+                        "역삼역",
+                        "선릉역",
+                        "삼성역",
+                        "종합운동장",
+                      ].map((tag, index) => (
+                        <TouchableOpacity
+                          key={index}
+                          style={styles.popularSearchTag}
+                          onPress={() => handleSearchItemPress(tag)}
+                        >
+                          <Text style={styles.popularSearchTagText}>{tag}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                </>
+              )}
             </ScrollView>
           </View>
         )}
@@ -470,6 +830,49 @@ export default function HomeScreen() {
           <Ionicons name="location" size={24} color={Colors.primary} />
         </TouchableOpacity>
 
+        {/* 경로 옵션 패널 */}
+        {showRouteOptions && selectedDestination && (
+          <View style={styles.routeOptionsPanel}>
+            <View style={styles.routeInfo}>
+              <View style={styles.routeDestination}>
+                <Ionicons name="location" size={16} color={Colors.primary} />
+                <Text style={styles.destinationName}>{selectedDestination.title}</Text>
+              </View>
+              {currentRoute && (
+                <View style={styles.routeStats}>
+                  <View style={styles.statItem}>
+                    <Ionicons name="time" size={14} color={Colors.success} />
+                    <Text style={styles.statText}>
+                      {Math.round(currentRoute.duration / 60)}분
+                    </Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Ionicons name="car" size={14} color={Colors.warning} />
+                    <Text style={styles.statText}>
+                      {(currentRoute.distance / 1000).toFixed(1)}km
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+            <View style={styles.routeActions}>
+              <TouchableOpacity 
+                style={styles.clearRouteButton}
+                onPress={handleClearRoute}
+              >
+                <Ionicons name="close" size={18} color={Colors.textSecondary} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.startNavigationButton}
+                onPress={handleStartNavigation}
+              >
+                <Ionicons name="navigate" size={18} color={Colors.white} />
+                <Text style={styles.startNavigationText}>네비게이션 시작</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* 주차장 목록 - 하단에 고정 */}
         <View style={styles.parkingSection}>
           <ScrollView
@@ -477,68 +880,129 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.parkingListContent}
           >
-            {parkingLots.map((lot) => (
-              <TouchableOpacity
-                key={lot.id}
-                style={styles.parkingCard}
-                onPress={() => navigateToDetail(lot.id)}
-              >
-                <View style={styles.cardHeader}>
-                  <View style={styles.cardTitle}>
-                    <Text style={styles.parkingName}>{lot.name}</Text>
-                    <View
-                      style={[
-                        styles.statusTag,
-                        { backgroundColor: lot.statusColor },
-                      ]}
-                    >
-                      <Text style={styles.statusText}>{lot.status}</Text>
-                    </View>
-                  </View>
+            {/* 선택된 목적지가 있을 때는 주변 주차장 표시, 없으면 기본 주차장 표시 */}
+            {selectedDestination
+              ? nearbyParkingLots.map((lot, index) => (
                   <TouchableOpacity
-                    style={styles.favoriteButton}
-                    onPress={() => handleFavoriteToggle(lot)}
-                    disabled={isLoading}
+                    key={`nearby_${index}`}
+                    style={styles.parkingCard}
+                    onPress={() => console.log("주차장 선택:", lot.title)}
                   >
-                    <Ionicons
-                      name={isFavorite(lot.id) ? "heart" : "heart-outline"}
-                      size={20}
-                      color={
-                        isFavorite(lot.id) ? Colors.error : Colors.textTertiary
-                      }
-                    />
+                    <View style={styles.cardHeader}>
+                      <View style={styles.cardTitle}>
+                        <Text style={styles.parkingName}>{lot.title}</Text>
+                        <View
+                          style={[
+                            styles.statusTag,
+                            { backgroundColor: Colors.success },
+                          ]}
+                        >
+                          <Text style={styles.statusText}>검색됨</Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    <Text style={styles.parkingAddress}>
+                      {lot.roadAddress || lot.address}
+                    </Text>
+
+                    <View style={styles.parkingDetails}>
+                      <View style={styles.detailItem}>
+                        <Ionicons
+                          name="location"
+                          size={14}
+                          color={Colors.primary}
+                        />
+                        <Text style={styles.detailText}>
+                          {Math.round(lot.distance)}m
+                        </Text>
+                      </View>
+                      <View style={styles.detailItem}>
+                        <Ionicons
+                          name="business"
+                          size={14}
+                          color={Colors.warning}
+                        />
+                        <Text style={styles.detailText}>{lot.category}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.cardFooter}>
+                      <Text style={styles.priceText}>주차 가능</Text>
+                      <Text style={styles.availabilityText}>
+                        목적지에서 {Math.round(lot.distance)}m
+                      </Text>
+                    </View>
                   </TouchableOpacity>
-                </View>
+                ))
+              : parkingLots.map((lot) => (
+                  <TouchableOpacity
+                    key={lot.id}
+                    style={styles.parkingCard}
+                    onPress={() => navigateToDetail(lot.id)}
+                  >
+                    <View style={styles.cardHeader}>
+                      <View style={styles.cardTitle}>
+                        <Text style={styles.parkingName}>{lot.name}</Text>
+                        <View
+                          style={[
+                            styles.statusTag,
+                            { backgroundColor: lot.statusColor },
+                          ]}
+                        >
+                          <Text style={styles.statusText}>{lot.status}</Text>
+                        </View>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.favoriteButton}
+                        onPress={() => handleFavoriteToggle(lot)}
+                        disabled={isLoading}
+                      >
+                        <Ionicons
+                          name={isFavorite(lot.id) ? "heart" : "heart-outline"}
+                          size={20}
+                          color={
+                            isFavorite(lot.id)
+                              ? Colors.error
+                              : Colors.textTertiary
+                          }
+                        />
+                      </TouchableOpacity>
+                    </View>
 
-                <Text style={styles.parkingAddress}>{lot.address}</Text>
+                    <Text style={styles.parkingAddress}>{lot.address}</Text>
 
-                <View style={styles.parkingDetails}>
-                  <View style={styles.detailItem}>
-                    <Ionicons
-                      name="location"
-                      size={14}
-                      color={Colors.primary}
-                    />
-                    <Text style={styles.detailText}>{lot.distance}</Text>
-                  </View>
-                  <View style={styles.detailItem}>
-                    <Ionicons name="time" size={14} color={Colors.success} />
-                    <Text style={styles.detailText}>{lot.time}</Text>
-                  </View>
-                  <View style={styles.detailItem}>
-                    <Ionicons name="star" size={14} color="#FFD700" />
-                    <Text style={styles.detailText}>{lot.rating}</Text>
-                  </View>
-                </View>
+                    <View style={styles.parkingDetails}>
+                      <View style={styles.detailItem}>
+                        <Ionicons
+                          name="location"
+                          size={14}
+                          color={Colors.primary}
+                        />
+                        <Text style={styles.detailText}>{lot.distance}</Text>
+                      </View>
+                      <View style={styles.detailItem}>
+                        <Ionicons
+                          name="time"
+                          size={14}
+                          color={Colors.success}
+                        />
+                        <Text style={styles.detailText}>{lot.time}</Text>
+                      </View>
+                      <View style={styles.detailItem}>
+                        <Ionicons name="star" size={14} color="#FFD700" />
+                        <Text style={styles.detailText}>{lot.rating}</Text>
+                      </View>
+                    </View>
 
-                <View style={styles.cardFooter}>
-                  <Text style={styles.priceText}>{lot.price}</Text>
-                  <Text style={styles.availabilityText}>
-                    {lot.available}자리 / {lot.total}자리
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+                    <View style={styles.cardFooter}>
+                      <Text style={styles.priceText}>{lot.price}</Text>
+                      <Text style={styles.availabilityText}>
+                        {lot.available}자리 / {lot.total}자리
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
           </ScrollView>
         </View>
       </SafeAreaView>
@@ -915,6 +1379,43 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
 
+  // 검색 결과 스타일
+  searchResultsSection: {
+    marginBottom: Spacing.xl,
+  },
+  searchResultItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  searchResultInfo: {
+    flex: 1,
+  },
+  searchResultTitle: {
+    fontSize: Typography.base,
+    fontWeight: "600",
+    color: Colors.textPrimary,
+    marginBottom: Spacing.xs,
+  },
+  searchResultAddress: {
+    fontSize: Typography.sm,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.xs,
+  },
+  searchResultCategory: {
+    fontSize: Typography.xs,
+    color: Colors.primary,
+    fontWeight: "500",
+  },
+  noResultsText: {
+    fontSize: Typography.sm,
+    color: Colors.textTertiary,
+    textAlign: "center",
+    paddingVertical: Spacing.lg,
+  },
+
   //map
   map: {
     position: "absolute",
@@ -933,5 +1434,74 @@ const styles = StyleSheet.create({
     padding: Spacing.sm,
     ...Shadows.base,
     zIndex: 100,
+  },
+  
+  // 경로 옵션 패널 스타일
+  routeOptionsPanel: {
+    position: "absolute",
+    top: 140,
+    left: Spacing.base,
+    right: Spacing.base,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.base,
+    ...Shadows.lg,
+    zIndex: 500,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  routeInfo: {
+    flex: 1,
+  },
+  routeDestination: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
+  destinationName: {
+    fontSize: Typography.base,
+    fontWeight: "600",
+    color: Colors.textPrimary,
+    flex: 1,
+  },
+  routeStats: {
+    flexDirection: "row",
+    gap: Spacing.base,
+  },
+  statItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  statText: {
+    fontSize: Typography.sm,
+    color: Colors.textSecondary,
+    fontWeight: "500",
+  },
+  routeActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  clearRouteButton: {
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.gray100,
+  },
+  startNavigationButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    backgroundColor: Colors.primary,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.base,
+    borderRadius: BorderRadius.lg,
+  },
+  startNavigationText: {
+    color: Colors.white,
+    fontSize: Typography.sm,
+    fontWeight: "600",
   },
 });
