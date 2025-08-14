@@ -1,0 +1,83 @@
+{
+  "expo": {
+    "name": "주찾앙",
+    "slug": "jca",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "jca",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.coma.jca",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "이 앱은 현재 위치를 확인하여 주변 주차장을 찾기 위해 위치 정보를 사용합니다.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "이 앱은 현재 위치를 확인하여 주변 주차장을 찾기 위해 위치 정보를 사용합니다.",
+        "NSCalendarsUsageDescription": "앱에서 일정을 관리하기 위해 캘린더 접근 권한이 필요합니다."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#007AFF"
+      },
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ],
+      "package": "com.coma.jca"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "이 앱은 현재 위치를 확인하여 주변 주차장을 찾기 위해 위치 정보를 사용합니다."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#007AFF"
+        }
+      ],
+      [
+        "@mj-studio/react-native-naver-map",
+        {
+          "client_id": "swbufm4nxk",
+          "android": {
+            "ACCESS_FINE_LOCATION": true,
+            "ACCESS_COARSE_LOCATION": true
+          },
+          "ios": {
+            "NSLocationAlwaysUsageDescription": "이 앱은 현재 위치를 확인하여 주변 주차장을 찾기 위해 위치 정보를 사용합니다.",
+            "NSLocationWhenInUseUsageDescription": "이 앱은 현재 위치를 확인하여 주변 주차장을 찾기 위해 위치 정보를 사용합니다."
+          }
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraMavenRepos": [
+              "https://repository.map.naver.com/archive/maven"
+            ]
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
