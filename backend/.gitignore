@@ -36,3 +36,10 @@ build/
 
 # VPC 배포 관련 임시 파일
 deploy-temp/
+
+# 쓰레기
+HOTSPOT_SOLUTION.md
+feature_navermapAPI.txt
+NAVIGATION_SETUP.md
+NETWORK_ISSUE_RESOLUTION.md
+VPC_DEPLOYMENT_README.md
