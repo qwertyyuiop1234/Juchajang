@@ -485,10 +485,39 @@ export default function HomeScreen() {
       console.log("✅ 경로 계산 성공:", routeData);
       setCurrentRoute(routeData);
       
-      // 폴리라인 데이터 설정
+      // 폴리라인 데이터 설정 및 변환
       if (routeData.polyline && routeData.polyline.length > 0) {
-        setRoutePolyline(routeData.polyline);
-        console.log("📋 폴리라인 설정 완료:", routeData.polyline.length, "개 포인트");
+        // 백엔드에서 받은 잘못된 구조를 올바르게 변환
+        const convertedPolyline = routeData.polyline.map((point: any) => {
+          // 현재 구조: { longitude: [lng, lat], latitude: [lng, lat] }
+          // 필요한 구조: { longitude: lng, latitude: lat }
+          if (point.longitude && Array.isArray(point.longitude) && point.longitude.length >= 2) {
+            return {
+              longitude: point.longitude[0],
+              latitude: point.longitude[1], // 실제로는 첫 번째가 경도, 두 번째가 위도
+            };
+          }
+          // 이미 올바른 구조인 경우
+          return point;
+        });
+        
+        setRoutePolyline(convertedPolyline);
+        console.log("📋 폴리라인 변환 완료:", convertedPolyline.length, "개 포인트");
+        console.log("🔍 첫 번째 포인트:", convertedPolyline[0]);
+      } else if (routeData.path && routeData.path.length > 0) {
+        // path 데이터를 직접 사용
+        const pathPolyline = [];
+        for (let i = 0; i < routeData.path.length; i++) {
+          const point = routeData.path[i];
+          if (Array.isArray(point) && point.length >= 2) {
+            pathPolyline.push({
+              longitude: point[0],
+              latitude: point[1],
+            });
+          }
+        }
+        setRoutePolyline(pathPolyline);
+        console.log("📋 path에서 폴리라인 생성 완료:", pathPolyline.length, "개 포인트");
       }
     } catch (error) {
       console.error("❌ 경로 계산 전체 실패:", error);
