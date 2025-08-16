@@ -3,7 +3,7 @@ import axios from "axios";
 
 export class NaverMapService {
   constructor() {
-    this.baseUrl = "https://naveropenapi.apigw.ntruss.com";
+    this.baseUrl = "https://maps.apigw.ntruss.com";
     this.clientId = ENV.NAVER_CLIENT_ID;
     this.clientSecret = ENV.NAVER_CLIENT_SECRET;
     this.localClientId = ENV.NAVER_CLIENT_LOCAL_ID;
@@ -113,17 +113,25 @@ export class NaverMapService {
     console.log(`📊 Google API 응답:`, {
       status: data.status,
       routes_count: data.routes?.length || 0,
-      error_message: data.error_message
+      error_message: data.error_message,
     });
-    
+
     if (data.status === "ZERO_RESULTS") {
-      console.warn(`⚠️ 경로를 찾을 수 없습니다. 좌표 확인: start(${start.latitude}, ${start.longitude}) → goal(${goal.latitude}, ${goal.longitude})`);
-      throw new Error("해당 지역에서 경로를 찾을 수 없습니다. 다른 경로 API를 시도합니다.");
+      console.warn(
+        `⚠️ 경로를 찾을 수 없습니다. 좌표 확인: start(${start.latitude}, ${start.longitude}) → goal(${goal.latitude}, ${goal.longitude})`
+      );
+      throw new Error(
+        "해당 지역에서 경로를 찾을 수 없습니다. 다른 경로 API를 시도합니다."
+      );
     }
-    
+
     if (data.status !== "OK") {
       console.error(`❌ Google API 에러: ${data.status}`, data.error_message);
-      throw new Error(`Google Directions API error: ${data.status} - ${data.error_message || 'Unknown error'}`);
+      throw new Error(
+        `Google Directions API error: ${data.status} - ${
+          data.error_message || "Unknown error"
+        }`
+      );
     }
 
     console.log("✅ Google Directions API 성공");
@@ -538,7 +546,7 @@ export class NaverMapService {
   ) {
     try {
       console.log("🗺️ Naver API 경유지 포함 경로 검색 시작");
-      
+
       const url = `${this.baseUrl}/map-direction/v1/driving`;
       const params = new URLSearchParams({
         start: `${start.longitude},${start.latitude}`,
@@ -565,7 +573,9 @@ export class NaverMapService {
         const errorText = await response.text();
         console.error(`❌ Naver Directions API HTTP 에러: ${response.status}`);
         console.error(`❌ 에러 응답: ${errorText}`);
-        throw new Error(`Naver Directions API failed: ${response.status} - ${errorText}`);
+        throw new Error(
+          `Naver Directions API failed: ${response.status} - ${errorText}`
+        );
       }
 
       const data = await response.json();
@@ -732,11 +742,15 @@ export class NaverMapService {
 
   decodePolyline(path) {
     const coordinates = [];
-    for (let i = 0; i < path.length; i += 2) {
-      coordinates.push({
-        longitude: path[i],
-        latitude: path[i + 1],
-      });
+    // path는 이미 [longitude, latitude] 쌍의 2차원 배열
+    for (let i = 0; i < path.length; i++) {
+      const point = path[i];
+      if (Array.isArray(point) && point.length >= 2) {
+        coordinates.push({
+          longitude: point[0],
+          latitude: point[1],
+        });
+      }
     }
     return coordinates;
   }
@@ -748,13 +762,20 @@ export class NaverMapService {
       const routes = await Promise.all(
         options.map(async (option) => {
           try {
-            const result = await this.getDirectionsFromNaver(start, goal, option);
+            const result = await this.getDirectionsFromNaver(
+              start,
+              goal,
+              option
+            );
             return {
               type: option,
               ...result,
             };
           } catch (error) {
-            console.error(`❌ Naver API 경로 옵션 ${option} 실패:`, error.message);
+            console.error(
+              `❌ Naver API 경로 옵션 ${option} 실패:`,
+              error.message
+            );
             return null;
           }
         })
@@ -764,7 +785,7 @@ export class NaverMapService {
       if (validRoutes.length === 0) {
         throw new Error("모든 경로 옵션에서 결과를 찾을 수 없습니다.");
       }
-      
+
       return validRoutes;
     } catch (error) {
       console.error("❌ 다중 경로 검색 전체 실패:", error.message);
