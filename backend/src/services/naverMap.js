@@ -71,129 +71,129 @@ export class NaverMapService {
     return this.formatDirectionResponse(data);
   }
 
-  async getDirectionsFromGoogle(start, goal, option) {
-    console.log("🔵 Google Directions API 시도");
+  // async getDirectionsFromGoogle(start, goal, option) {
+  //   console.log("🔵 Google Directions API 시도");
 
-    const url = "https://maps.googleapis.com/maps/api/directions/json";
-    const params = new URLSearchParams({
-      origin: `${start.latitude},${start.longitude}`,
-      destination: `${goal.latitude},${goal.longitude}`,
-      mode: "driving",
-      language: "ko",
-      region: "kr",
-      key: this.googleApiKey,
-    });
+  //   const url = "https://maps.googleapis.com/maps/api/directions/json";
+  //   const params = new URLSearchParams({
+  //     origin: `${start.latitude},${start.longitude}`,
+  //     destination: `${goal.latitude},${goal.longitude}`,
+  //     mode: "driving",
+  //     language: "ko",
+  //     region: "kr",
+  //     key: this.googleApiKey,
+  //   });
 
-    // 한국에서는 avoid 옵션이 문제가 될 수 있으므로 제거
-    // if (option === "trafast") {
-    //   params.append("avoid", "tolls");
-    // } else if (option === "tracomfort") {
-    //   params.append("avoid", "highways");
-    // }
+  //   // 한국에서는 avoid 옵션이 문제가 될 수 있으므로 제거
+  //   // if (option === "trafast") {
+  //   //   params.append("avoid", "tolls");
+  //   // } else if (option === "tracomfort") {
+  //   //   params.append("avoid", "highways");
+  //   // }
 
-    console.log(`🌐 Google Directions API URL: ${url}?${params}`);
+  //   console.log(`🌐 Google Directions API URL: ${url}?${params}`);
 
-    const response = await fetch(`${url}?${params}`, {
-      method: "GET",
-    });
+  //   const response = await fetch(`${url}?${params}`, {
+  //     method: "GET",
+  //   });
 
-    console.log(`📡 Google Directions API 응답 상태: ${response.status}`);
+  //   console.log(`📡 Google Directions API 응답 상태: ${response.status}`);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ Google Directions API HTTP 에러: ${response.status}`);
-      console.error(`❌ 에러 응답: ${errorText}`);
-      throw new Error(
-        `Google Directions API failed: ${response.status} - ${errorText}`
-      );
-    }
+  //   if (!response.ok) {
+  //     const errorText = await response.text();
+  //     console.error(`❌ Google Directions API HTTP 에러: ${response.status}`);
+  //     console.error(`❌ 에러 응답: ${errorText}`);
+  //     throw new Error(
+  //       `Google Directions API failed: ${response.status} - ${errorText}`
+  //     );
+  //   }
 
-    const data = await response.json();
+  //   const data = await response.json();
 
-    console.log(`📊 Google API 응답:`, {
-      status: data.status,
-      routes_count: data.routes?.length || 0,
-      error_message: data.error_message,
-    });
+  //   console.log(`📊 Google API 응답:`, {
+  //     status: data.status,
+  //     routes_count: data.routes?.length || 0,
+  //     error_message: data.error_message,
+  //   });
 
-    if (data.status === "ZERO_RESULTS") {
-      console.warn(
-        `⚠️ 경로를 찾을 수 없습니다. 좌표 확인: start(${start.latitude}, ${start.longitude}) → goal(${goal.latitude}, ${goal.longitude})`
-      );
-      throw new Error(
-        "해당 지역에서 경로를 찾을 수 없습니다. 다른 경로 API를 시도합니다."
-      );
-    }
+  //   if (data.status === "ZERO_RESULTS") {
+  //     console.warn(
+  //       `⚠️ 경로를 찾을 수 없습니다. 좌표 확인: start(${start.latitude}, ${start.longitude}) → goal(${goal.latitude}, ${goal.longitude})`
+  //     );
+  //     throw new Error(
+  //       "해당 지역에서 경로를 찾을 수 없습니다. 다른 경로 API를 시도합니다."
+  //     );
+  //   }
 
-    if (data.status !== "OK") {
-      console.error(`❌ Google API 에러: ${data.status}`, data.error_message);
-      throw new Error(
-        `Google Directions API error: ${data.status} - ${
-          data.error_message || "Unknown error"
-        }`
-      );
-    }
+  //   if (data.status !== "OK") {
+  //     console.error(`❌ Google API 에러: ${data.status}`, data.error_message);
+  //     throw new Error(
+  //       `Google Directions API error: ${data.status} - ${
+  //         data.error_message || "Unknown error"
+  //       }`
+  //     );
+  //   }
 
-    console.log("✅ Google Directions API 성공");
-    console.log("📊 응답 데이터 구조:", Object.keys(data));
-    return this.formatGoogleDirectionResponse(data);
-  }
+  //   console.log("✅ Google Directions API 성공");
+  //   console.log("📊 응답 데이터 구조:", Object.keys(data));
+  //   return this.formatGoogleDirectionResponse(data);
+  // }
 
-  async getDirectionsFromOpenRoute(start, goal, option = "trafast") {
-    try {
-      console.log("🌍 OpenRouteService API 사용");
+  // async getDirectionsFromOpenRoute(start, goal, option = "trafast") {
+  //   try {
+  //     console.log("🌍 OpenRouteService API 사용");
 
-      const url = "https://api.openrouteservice.org/v2/directions/driving-car";
-      const coordinates = [
-        [start.longitude, start.latitude],
-        [goal.longitude, goal.latitude],
-      ];
+  //     const url = "https://api.openrouteservice.org/v2/directions/driving-car";
+  //     const coordinates = [
+  //       [start.longitude, start.latitude],
+  //       [goal.longitude, goal.latitude],
+  //     ];
 
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization:
-            "5b3ce3597851110001cf6248a4bf4d6938a14d9ebb04fe9f632c2d4a", // 공개 API 키
-        },
-        body: JSON.stringify({
-          coordinates: coordinates,
-          format: "geojson",
-        }),
-      });
+  //     const response = await fetch(url, {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         Authorization:
+  //           "5b3ce3597851110001cf6248a4bf4d6938a14d9ebb04fe9f632c2d4a", // 공개 API 키
+  //       },
+  //       body: JSON.stringify({
+  //         coordinates: coordinates,
+  //         format: "geojson",
+  //       }),
+  //     });
 
-      if (!response.ok) {
-        console.warn(`⚠️ OpenRoute API 실패: ${response.status}, 폴백 사용`);
-        return this.generateFallbackRoute(start, goal);
-      }
+  //     if (!response.ok) {
+  //       console.warn(`⚠️ OpenRoute API 실패: ${response.status}, 폴백 사용`);
+  //       return this.generateFallbackRoute(start, goal);
+  //     }
 
-      const data = await response.json();
-      console.log("✅ OpenRouteService 성공");
+  //     const data = await response.json();
+  //     console.log("✅ OpenRouteService 성공");
 
-      if (data.features && data.features.length > 0) {
-        const route = data.features[0];
-        const properties = route.properties;
-        const geometry = route.geometry;
+  //     if (data.features && data.features.length > 0) {
+  //       const route = data.features[0];
+  //       const properties = route.properties;
+  //       const geometry = route.geometry;
 
-        return {
-          distance: Math.round(properties.segments[0].distance),
-          duration: Math.round(properties.segments[0].duration),
-          tollFare: 0,
-          fuelPrice: 0,
-          path: this.geometryToPath(geometry.coordinates),
-          guide: this.generateSimpleGuide(geometry.coordinates),
-          section: [],
-          bbox: [],
-          polyline: this.coordinatesToPolyline(geometry.coordinates),
-        };
-      }
+  //       return {
+  //         distance: Math.round(properties.segments[0].distance),
+  //         duration: Math.round(properties.segments[0].duration),
+  //         tollFare: 0,
+  //         fuelPrice: 0,
+  //         path: this.geometryToPath(geometry.coordinates),
+  //         guide: this.generateSimpleGuide(geometry.coordinates),
+  //         section: [],
+  //         bbox: [],
+  //         polyline: this.coordinatesToPolyline(geometry.coordinates),
+  //       };
+  //     }
 
-      return this.generateFallbackRoute(start, goal);
-    } catch (error) {
-      console.error("❌ OpenRouteService 에러:", error);
-      return this.generateFallbackRoute(start, goal);
-    }
-  }
+  //     return this.generateFallbackRoute(start, goal);
+  //   } catch (error) {
+  //     console.error("❌ OpenRouteService 에러:", error);
+  //     return this.generateFallbackRoute(start, goal);
+  //   }
+  // }
 
   generateFallbackRoute(start, goal) {
     console.log("🎯 도로 기반 폴백 경로 생성");

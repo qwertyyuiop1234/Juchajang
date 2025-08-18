@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   StyleSheet,
   View,
@@ -6,11 +6,10 @@ import {
   TouchableOpacity,
   Alert,
   StatusBar,
-  Platform,
   Vibration,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import * as Speech from "expo-speech";
@@ -21,32 +20,34 @@ import {
 } from "@mj-studio/react-native-naver-map";
 import { navigationAPI, DirectionResponse } from "../services/navigationAPI";
 import { Colors, Typography, Spacing, BorderRadius } from "../constants/Styles";
-import { Icons } from "../constants/Icon";
 import TurnByTurnGuide from "../components/TurnByTurnGuide";
 
 export default function NavigationScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  
+
   const mapRef = useRef<any>(null);
   const locationWatcherRef = useRef<Location.LocationSubscription | null>(null);
-  const routeCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const routeCheckIntervalRef = useRef<number | null>(null);
 
-  const [currentLocation, setCurrentLocation] = useState<Location.LocationObject | null>(null);
-  const [currentRoute, setCurrentRoute] = useState<DirectionResponse | null>(null);
+  const [currentLocation, setCurrentLocation] =
+    useState<Location.LocationObject | null>(null);
+  const [currentRoute, setCurrentRoute] = useState<DirectionResponse | null>(
+    null
+  );
   const [isNavigating, setIsNavigating] = useState(false);
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [remainingDistance, setRemainingDistance] = useState<number>(0);
   const [remainingTime, setRemainingTime] = useState<number>(0);
-  const [currentInstruction, setCurrentInstruction] = useState<string>("경로를 계산하는 중...");
+  const [, setCurrentInstruction] = useState<string>("경로를 계산하는 중...");
   const [currentGuideStep, setCurrentGuideStep] = useState<any>(null);
   const [nextGuideStep, setNextGuideStep] = useState<any>(null);
 
   const destination = {
-    latitude: parseFloat(params.destinationLat as string || "0"),
-    longitude: parseFloat(params.destinationLng as string || "0"),
-    name: params.destinationName as string || "목적지",
+    latitude: parseFloat((params.destinationLat as string) || "0"),
+    longitude: parseFloat((params.destinationLng as string) || "0"),
+    name: (params.destinationName as string) || "목적지",
   };
 
   const INITIAL_CAMERA = {
@@ -73,7 +74,10 @@ export default function NavigationScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("위치 권한 필요", "네비게이션을 사용하려면 위치 권한을 허용해 주세요.");
+        Alert.alert(
+          "위치 권한 필요",
+          "네비게이션을 사용하려면 위치 권한을 허용해 주세요."
+        );
         router.back();
         return;
       }
@@ -93,7 +97,10 @@ export default function NavigationScreen() {
     }
   };
 
-  const calculateRoute = async (startCoords: { latitude: number; longitude: number }) => {
+  const calculateRoute = async (startCoords: {
+    latitude: number;
+    longitude: number;
+  }) => {
     try {
       const route = await navigationAPI.getDirections({
         start: {
@@ -111,7 +118,7 @@ export default function NavigationScreen() {
       setRemainingDistance(route.distance);
       setRemainingTime(route.duration);
       setCurrentInstruction("네비게이션을 시작합니다");
-      
+
       // 가이드 단계 설정
       if (route.guide && route.guide.length > 0) {
         setCurrentGuideStep(route.guide[0]);
@@ -160,10 +167,10 @@ export default function NavigationScreen() {
       });
     }
 
-    const distanceToDestination = calculateDistance(
-      location.coords,
-      { latitude: destination.latitude, longitude: destination.longitude }
-    );
+    const distanceToDestination = calculateDistance(location.coords, {
+      latitude: destination.latitude,
+      longitude: destination.longitude,
+    });
 
     if (distanceToDestination < 50) {
       handleArrival();
@@ -196,7 +203,7 @@ export default function NavigationScreen() {
       const recalculatingMessage = "경로를 재계산하는 중입니다";
       setCurrentInstruction(recalculatingMessage);
       speakInstruction(recalculatingMessage);
-      
+
       const newRoute = await navigationAPI.getReroute({
         currentLocation: currentLocation.coords,
         originalGoal: {
@@ -209,7 +216,7 @@ export default function NavigationScreen() {
       setCurrentRoute(newRoute);
       setRemainingDistance(newRoute.distance);
       setRemainingTime(newRoute.duration);
-      
+
       const newRouteMessage = "새로운 경로로 안내합니다";
       setCurrentInstruction(newRouteMessage);
       speakInstruction(newRouteMessage);
@@ -221,20 +228,16 @@ export default function NavigationScreen() {
   const handleArrival = () => {
     cleanup();
     setIsNavigating(false);
-    
+
     const arrivalMessage = `${destination.name}에 도착했습니다`;
     speakInstruction(arrivalMessage);
-    
-    Alert.alert(
-      "도착 완료",
-      arrivalMessage,
-      [
-        {
-          text: "확인",
-          onPress: () => router.back(),
-        },
-      ]
-    );
+
+    Alert.alert("도착 완료", arrivalMessage, [
+      {
+        text: "확인",
+        onPress: () => router.back(),
+      },
+    ]);
   };
 
   const calculateDistance = (
@@ -262,10 +265,11 @@ export default function NavigationScreen() {
     return `${Math.round(meters)}m`;
   };
 
-  const formatTime = (seconds: number): string => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    
+  const formatTime = (milliseconds: number): string => {
+    const totalMinutes = Math.round(milliseconds / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
     if (hours > 0) {
       return `${hours}시간 ${minutes}분`;
     }
@@ -290,20 +294,16 @@ export default function NavigationScreen() {
   };
 
   const handleStopNavigation = () => {
-    Alert.alert(
-      "네비게이션 종료",
-      "네비게이션을 종료하시겠습니까?",
-      [
-        { text: "취소", style: "cancel" },
-        { 
-          text: "종료", 
-          onPress: () => {
-            cleanup();
-            router.back();
-          }
+    Alert.alert("네비게이션 종료", "네비게이션을 종료하시겠습니까?", [
+      { text: "취소", style: "cancel" },
+      {
+        text: "종료",
+        onPress: () => {
+          cleanup();
+          router.back();
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const toggleVoiceGuidance = () => {
@@ -319,102 +319,149 @@ export default function NavigationScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
-      <NaverMapView
-        ref={mapRef}
-        style={styles.map}
-        initialCamera={INITIAL_CAMERA}
-        mapType="Navi"
-        isNightModeEnabled={false}
-        isScrollGesturesEnabled={false}
-        isZoomGesturesEnabled={false}
-        isRotateGesturesEnabled={false}
-        isTiltGesturesEnabled={false}
-        isShowLocationButton={false}
-      >
-        {currentLocation && (
-          <NaverMapMarkerOverlay
-            latitude={currentLocation.coords.latitude}
-            longitude={currentLocation.coords.longitude}
-            image={Icons.reactLogo}
-            width={20}
-            height={20}
-          />
-        )}
-        
-        <NaverMapMarkerOverlay
-          latitude={destination.latitude}
-          longitude={destination.longitude}
-          image={Icons.reactLogo}
-          width={30}
-          height={30}
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={styles.container}>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor="transparent"
+          translucent
         />
 
-        {currentRoute && currentRoute.polyline && (
-          <NaverMapPolylineOverlay
-            coords={currentRoute.polyline.map(point => ({
-              latitude: point.latitude,
-              longitude: point.longitude,
-            }))}
-            width={8}
-            color="#007AFF"
-          />
-        )}
-      </NaverMapView>
-
-      <SafeAreaView style={styles.overlay}>
-        <View style={styles.topPanel}>
-          <View style={styles.navigationInfo}>
-            <Text style={styles.destinationText}>{destination.name}</Text>
-            <View style={styles.routeInfo}>
-              <Text style={styles.distanceText}>{formatDistance(remainingDistance)}</Text>
-              <Text style={styles.timeText}>{formatTime(remainingTime)}</Text>
-            </View>
-          </View>
-          <TouchableOpacity style={styles.closeButton} onPress={handleStopNavigation}>
-            <Ionicons name="close" size={24} color={Colors.white} />
-          </TouchableOpacity>
-        </View>
-
-        <TurnByTurnGuide
-          currentStep={currentGuideStep}
-          nextStep={nextGuideStep}
-          remainingDistance={remainingDistance}
-        />
-
-        <View style={styles.bottomPanel}>
-          <TouchableOpacity
-            style={styles.controlButton}
-            onPress={toggleVoiceGuidance}
-          >
-            <Ionicons
-              name={isVoiceEnabled ? "volume-high" : "volume-mute"}
-              size={24}
-              color={isVoiceEnabled ? Colors.primary : Colors.textSecondary}
+        <NaverMapView
+          ref={mapRef}
+          style={styles.map}
+          initialCamera={INITIAL_CAMERA}
+          mapType="Navi"
+          isNightModeEnabled={false}
+          isScrollGesturesEnabled={false}
+          isZoomGesturesEnabled={false}
+          isRotateGesturesEnabled={false}
+          isTiltGesturesEnabled={false}
+          isShowLocationButton={false}
+        >
+          {currentLocation && (
+            <NaverMapMarkerOverlay
+              latitude={currentLocation.coords.latitude}
+              longitude={currentLocation.coords.longitude}
+              width={24}
+              height={24}
+              image={{ symbol: "blue" }}
             />
-          </TouchableOpacity>
-
-          {!isNavigating ? (
-            <TouchableOpacity
-              style={styles.startButton}
-              onPress={handleStartNavigation}
-            >
-              <Text style={styles.startButtonText}>네비게이션 시작</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={styles.rerouteButton}
-              onPress={handleReroute}
-            >
-              <Ionicons name="refresh" size={20} color={Colors.white} />
-              <Text style={styles.rerouteButtonText}>재탐색</Text>
-            </TouchableOpacity>
           )}
-        </View>
-      </SafeAreaView>
-    </View>
+
+          <NaverMapMarkerOverlay
+            latitude={destination.latitude}
+            longitude={destination.longitude}
+            width={120}
+            height={75}
+            anchor={{ x: 0.5, y: 1 }}
+          >
+            <View
+              key={`destination/${destination.name}`}
+              collapsable={false}
+              style={[
+                styles.destinationBubble,
+                {
+                  width: 120,
+                  height: 60,
+                  backgroundColor: "#FF3B30",
+                },
+              ]}
+            >
+              <View style={styles.destinationContent}>
+                <Text style={styles.destinationTitle} numberOfLines={1}>
+                  {destination.name}
+                </Text>
+                <Text style={styles.destinationType}>🎯 목적지</Text>
+              </View>
+              <View
+                style={[
+                  styles.destinationTail,
+                  {
+                    borderTopColor: "#FF3B30",
+                  },
+                ]}
+              />
+            </View>
+          </NaverMapMarkerOverlay>
+
+          {currentRoute && currentRoute.polyline && (
+            <NaverMapPolylineOverlay
+              coords={currentRoute.polyline.map((point) => ({
+                latitude: point.latitude,
+                longitude: point.longitude,
+              }))}
+              width={8}
+              color="#007AFF"
+            />
+          )}
+        </NaverMapView>
+
+        <SafeAreaView style={styles.overlay}>
+          <View style={styles.topPanel}>
+            <View style={styles.navigationInfo}>
+              <View style={styles.routeInfo}>
+                <View style={styles.routeStatItem}>
+                  <Ionicons name="time" size={16} color={Colors.success} />
+                  <Text style={styles.routeStatText}>
+                    {formatTime(remainingTime)}
+                  </Text>
+                </View>
+                <View style={styles.routeStatItem}>
+                  <Ionicons name="car" size={14} color={Colors.warning} />
+                  <Text style={styles.routeStatText}>
+                    {formatDistance(remainingDistance)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={handleStopNavigation}
+            >
+              <Ionicons name="close" size={24} color={Colors.white} />
+            </TouchableOpacity>
+          </View>
+
+          <TurnByTurnGuide
+            currentStep={currentGuideStep}
+            nextStep={nextGuideStep}
+            remainingDistance={remainingDistance}
+          />
+
+          <View style={styles.bottomPanel}>
+            <TouchableOpacity
+              style={styles.controlButton}
+              onPress={toggleVoiceGuidance}
+            >
+              <Ionicons
+                name={isVoiceEnabled ? "volume-high" : "volume-mute"}
+                size={24}
+                color={isVoiceEnabled ? Colors.primary : Colors.textSecondary}
+              />
+            </TouchableOpacity>
+
+            {!isNavigating ? (
+              <TouchableOpacity
+                style={styles.startButton}
+                onPress={handleStartNavigation}
+              >
+                <Text style={styles.startButtonText}>네비게이션 시작</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.rerouteButton}
+                onPress={handleReroute}
+              >
+                <Ionicons name="refresh" size={20} color={Colors.white} />
+                <Text style={styles.rerouteButtonText}>재탐색</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </SafeAreaView>
+      </View>
+    </>
   );
 }
 
@@ -452,21 +499,36 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.8)",
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.sm,
-    marginTop: Platform.OS === "ios" ? 44 : StatusBar.currentHeight || 0,
   },
   navigationInfo: {
     flex: 1,
+  },
+  destinationHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   destinationText: {
     color: Colors.white,
     fontSize: Typography.lg,
     fontWeight: "600",
-    marginBottom: Spacing.xs,
+    flex: 1,
   },
   routeInfo: {
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.base,
+  },
+  routeStatItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  routeStatText: {
+    color: Colors.white,
+    fontSize: Typography.sm,
+    fontWeight: "500",
   },
   distanceText: {
     color: Colors.white,
@@ -549,5 +611,56 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: Typography.base,
     fontWeight: "500",
+  },
+
+  // 목적지 마커 스타일
+  destinationBubble: {
+    borderRadius: BorderRadius.lg,
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+    opacity: 0.9,
+    paddingVertical: 3,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  destinationContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+  },
+  destinationTitle: {
+    fontSize: Typography.xs,
+    fontWeight: "600",
+    color: Colors.white,
+    textAlign: "center",
+    marginBottom: 2,
+  },
+  destinationType: {
+    fontSize: Typography.xs - 1,
+    color: Colors.white,
+    textAlign: "center",
+    opacity: 0.9,
+  },
+  destinationTail: {
+    position: "absolute",
+    bottom: -18,
+    left: "50%",
+    marginLeft: -18,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 18,
+    borderRightWidth: 18,
+    borderTopWidth: 18,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
   },
 });

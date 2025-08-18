@@ -217,22 +217,27 @@ router.get("/search/place", async (req, res) => {
       // API 실패 시 더미 데이터 반환
       const requestedDisplay = parseInt(display);
       const dummyItems = [];
-      
+
       // 요청된 개수만큼 더미 데이터 생성
       for (let i = 1; i <= requestedDisplay; i++) {
         dummyItems.push({
           title: `${query}`,
           link: "",
-          category: i % 3 === 1 ? "음식점>한식" : i % 3 === 2 ? "카페>커피전문점" : "기타>상점",
+          category:
+            i % 3 === 1
+              ? "음식점>한식"
+              : i % 3 === 2
+              ? "카페>커피전문점"
+              : "기타>상점",
           description: `${query}에서 찾은 장소 ${i}`,
           telephone: `02-123${i}-567${i}`,
           address: `서울시 강남구 ${query}동 ${100 + i * 10}`,
           roadAddress: `서울시 강남구 ${query}로 ${100 + i * 10}`,
-          mapx: 127.02761 + (i * 0.001),
-          mapy: 37.497952 + (i * 0.001),
+          mapx: 127.02761 + i * 0.001,
+          mapy: 37.497952 + i * 0.001,
         });
       }
-      
+
       const dummyResults = {
         total: requestedDisplay,
         display: requestedDisplay,
@@ -291,8 +296,12 @@ router.get("/test/naver", async (req, res) => {
     const testGoal = { latitude: 37.4979, longitude: 127.0276 }; // 강남역
 
     console.log("🧪 Naver Directions 5 API 테스트 시작");
-    const result = await naverMapService.getDirections(testStart, testGoal, "trafast");
-    
+    const result = await naverMapService.getDirections(
+      testStart,
+      testGoal,
+      "trafast"
+    );
+
     res.status(200).json({
       success: true,
       message: "Naver Directions 5 API 테스트 성공",

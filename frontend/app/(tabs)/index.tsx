@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   StyleSheet,
   View,
@@ -6,16 +6,14 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Modal,
   Alert,
-  Platform,
   Linking,
 } from "react-native";
 import * as Location from "expo-location";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useFavorites, ParkingLot } from "../../contexts/FavoritesContext";
+// import { useFavorites } from "../../contexts/FavoritesContext";
 import {
   Colors,
   Typography,
@@ -28,7 +26,6 @@ import {
   NaverMapMarkerOverlay,
   NaverMapPolylineOverlay,
 } from "@mj-studio/react-native-naver-map";
-import { Icons } from "../../constants/Icon";
 import navigationAPI from "../../services/navigationAPI";
 
 export default function HomeScreen() {
@@ -39,7 +36,7 @@ export default function HomeScreen() {
     zoom: 12, // 줌 레벨
   };
   const router = useRouter();
-  const { isFavorite, addFavorite, removeFavorite, isLoading } = useFavorites();
+  // const { isFavorite, addFavorite, removeFavorite } = useFavorites();
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [recentSearches] = useState(["강남역", "역삼역", "선릉역", "테헤란로"]);
@@ -47,14 +44,16 @@ export default function HomeScreen() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchMarkers, setSearchMarkers] = useState<any[]>([]);
   const [selectedDestination, setSelectedDestination] = useState<any>(null);
-  const [nearbyParkingLots, setNearbyParkingLots] = useState<any[]>([]);
+  const [, setNearbyParkingLots] = useState<any[]>([]);
   const [destinationMarker, setDestinationMarker] = useState<any>(null);
   const [currentRoute, setCurrentRoute] = useState<any>(null);
-  const [routePolyline, setRoutePolyline] = useState<{latitude: number, longitude: number}[]>([]);
+  const [routePolyline, setRoutePolyline] = useState<
+    { latitude: number; longitude: number }[]
+  >([]);
   const [showRouteOptions, setShowRouteOptions] = useState(false);
 
-  // 주차장 데이터 (실제로는 API에서 받아올 데이터)
-  const parkingLots: ParkingLot[] = [
+  // 주차장 데이터 (실제로는 API에서 받아올 데이터) - 현재 사용하지 않음
+  /* const parkingLots: ParkingLot[] = [
     {
       id: 1,
       name: "강남역 지하주차장",
@@ -111,14 +110,14 @@ export default function HomeScreen() {
       statusColor: Colors.success,
       type: "public",
     },
-  ];
+  ]; */
 
   // variables for location, errormsg
   const [location, setLocation] = useState<Location.LocationObject | null>(
     null
   );
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [mapCamera, setMapCamera] = useState(INITIAL_CAMERA);
+  const [, setErrorMsg] = useState<string | null>(null);
+  const [, setMapCamera] = useState(INITIAL_CAMERA);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationWatcher, setLocationWatcher] =
     useState<Location.LocationSubscription | null>(null);
@@ -252,17 +251,17 @@ export default function HomeScreen() {
     });
   };
 
-  const navigateToDetail = (id: number) => {
-    router.push(`/parking-detail?id=${id}` as any);
-  };
+  // const navigateToDetail = (id: number) => {
+  //   router.push(`/parking-detail?id=${id}` as any);
+  // };
 
-  const handleFavoriteToggle = (parkingLot: ParkingLot) => {
-    if (isFavorite(parkingLot.id)) {
-      removeFavorite(parkingLot.id);
-    } else {
-      addFavorite(parkingLot);
-    }
-  };
+  // const handleFavoriteToggle = (parkingLot: ParkingLot) => {
+  //   if (isFavorite(parkingLot.id)) {
+  //     removeFavorite(parkingLot.id);
+  //   } else {
+  //     addFavorite(parkingLot);
+  //   }
+  // };
 
   const handleSearchPress = () => {
     setIsSearchModalVisible(true);
@@ -312,139 +311,286 @@ export default function HomeScreen() {
 
       console.log("🎯 목적지 마커:", newDestinationMarker);
       setDestinationMarker(newDestinationMarker);
-      
+
       // 현재 위치에서 목적지까지의 경로 계산
       await calculateRouteToDestination(result);
 
       try {
-        // 실제 주변 주차장 검색
-        console.log("🔍 실제 주변 주차장 검색 중...", result.mapy, result.mapx);
-        const nearbyParking = await navigationAPI.searchNearbyParkingLots(
+        // AI 주차장 추천과 거리순 추천을 동시에 요청
+        console.log("🤖 AI 주차장 추천 요청 중...", result.mapy, result.mapx);
+        console.log(
+          "📍 거리순 주차장 추천 요청 중...",
           result.mapy,
-          result.mapx,
-          2000 // 2km 반경으로 증가
+          result.mapx
+        );
+        console.log("🔍 요청 파라미터:", {
+          lat: result.mapy,
+          lng: result.mapx,
+          num: 3,
+        });
+
+        // AI 추천과 거리순 추천을 병렬로 호출 (에러 처리 포함)
+        const [aiRecommendation, distanceRecommendation] =
+          await Promise.allSettled([
+            navigationAPI.getAIParkingRecommendations(
+              result.mapy,
+              result.mapx,
+              3 // 상위 3개 추천
+            ),
+            navigationAPI.getParkingRecommendations(
+              result.mapy,
+              result.mapx,
+              3 // 가장 가까운 3개
+            ),
+          ]);
+
+        // 결과 처리
+        const aiResult =
+          aiRecommendation.status === "fulfilled"
+            ? aiRecommendation.value
+            : null;
+        const distanceResult =
+          distanceRecommendation.status === "fulfilled"
+            ? distanceRecommendation.value
+            : null;
+
+        console.log("🎯 AI 추천 결과:", aiResult);
+        console.log("🎯 AI 추천 성공 여부:", aiResult?.success);
+        console.log("🎯 AI 추천 데이터 길이:", aiResult?.data?.length);
+
+        if (aiRecommendation.status === "rejected") {
+          console.error("❌ AI 추천 실패:", aiRecommendation.reason);
+        }
+
+        console.log("📍 거리순 추천 결과:", distanceResult);
+        console.log("📍 거리순 추천 성공 여부:", distanceResult?.success);
+        console.log(
+          "📍 거리순 추천 데이터 길이:",
+          distanceResult?.data?.length
         );
 
-        console.log("🅿️ 찾은 주차장:", nearbyParking);
+        if (distanceRecommendation.status === "rejected") {
+          console.error("❌ 거리순 추천 실패:", distanceRecommendation.reason);
+        }
 
-        if (nearbyParking.parkingLots && nearbyParking.parkingLots.length > 0) {
-          // 실제 API 결과 사용 - 최대 3개만
-          const limitedParkingLots = nearbyParking.parkingLots.slice(0, 3);
-          setNearbyParkingLots(limitedParkingLots);
+        // 비교 로그 출력
+        if (aiResult?.success && distanceResult?.success) {
+          console.log("🔄 AI vs 거리순 추천 비교:");
+          console.log("🤖 AI 추천 주차장들:");
+          aiResult.data.forEach((lot: any, index: number) => {
+            console.log(
+              `  ${index + 1}. ${lot.parking_name} - ${
+                lot.distance_km
+              }km (점수: ${lot.total_score?.toFixed(1)})`
+            );
+          });
+          console.log("📍 가장 가까운 주차장들:");
+          distanceResult.data.forEach((lot: any, index: number) => {
+            console.log(
+              `  ${index + 1}. ${lot.parking_name} - ${lot.distance_km}km`
+            );
+          });
+        } else if (aiResult?.success) {
+          console.log("🤖 AI 추천만 성공:");
+          aiResult.data.forEach((lot: any, index: number) => {
+            console.log(
+              `  ${index + 1}. ${lot.parking_name} - ${
+                lot.distance_km
+              }km (점수: ${lot.total_score?.toFixed(1)})`
+            );
+          });
+        }
 
-          // 주차장 마커들만 설정 (목적지 마커는 별도 관리)
-          const parkingMarkers = limitedParkingLots.map((lot, index) => ({
-            id: `parking_${Date.now()}_${index}`,
-            latitude: lot.mapy,
-            longitude: lot.mapx,
-            title: lot.title,
-            address: lot.roadAddress || lot.address,
-            distance: lot.distance,
-            type: "parking",
+        // 두 추천 결과를 모두 처리
+        let allParkingLots: any[] = [];
+        let allMarkers: any[] = [];
+        
+        // AI 추천 결과 처리
+        let aiParkingLots: any[] = [];
+        if (aiResult?.success && aiResult.data && aiResult.data.length > 0) {
+          aiParkingLots = aiResult.data.map((lot: any) => ({
+            title: lot.parking_name,
+            address: lot.addr,
+            roadAddress: lot.addr,
+            mapy: lot.coordinates[0], // 위도
+            mapx: lot.coordinates[1], // 경도
+            distance: Math.round(lot.distance_km * 1000), // km를 m로 변환
+            category: "AI 추천 주차장",
+            predicted_available: lot.predicted_available,
+            congestion_level: lot.congestion_level,
+            congestion_rate: lot.congestion_rate,
+            total_score: lot.total_score,
+            parking_code: lot.parking_code,
+            tel: lot.tel,
+            pay_yn_name: lot.pay_yn_name,
+            recommendation_type: "ai",
           }));
+        }
 
-          console.log("📍 주차장 마커들:", parkingMarkers);
-          setSearchMarkers(parkingMarkers);
-        } else {
-          // API 결과가 없으면 더미 데이터 사용 - 3개
-          console.log("⚠️ API 결과 없음, 더미 데이터 사용");
-          const dummyParkingLots = [
-            {
-              title: "근처 주차장 1",
-              address: "검색된 위치 근처",
-              roadAddress: "검색된 위치 근처",
-              mapy: result.mapy + 0.001,
-              mapx: result.mapx + 0.001,
-              distance: 100,
-              category: "주차장",
-            },
-            {
-              title: "근처 주차장 2",
-              address: "검색된 위치 근처",
-              roadAddress: "검색된 위치 근처",
-              mapy: result.mapy - 0.001,
-              mapx: result.mapx - 0.001,
-              distance: 200,
-              category: "주차장",
-            },
-            {
-              title: "근처 주차장 3",
-              address: "검색된 위치 근처",
-              roadAddress: "검색된 위치 근처",
-              mapy: result.mapy + 0.0005,
-              mapx: result.mapx - 0.0015,
-              distance: 150,
-              category: "주차장",
-            },
+        // 거리기반 추천 결과 처리
+        let distanceParkingLots: any[] = [];
+        if (
+          distanceResult?.success &&
+          distanceResult.data &&
+          distanceResult.data.length > 0
+        ) {
+          distanceParkingLots = distanceResult.data.map((lot: any) => ({
+            title: lot.parking_name,
+            address: lot.addr,
+            roadAddress: lot.addr,
+            mapy: lot.coordinates[0], // 위도
+            mapx: lot.coordinates[1], // 경도
+            distance: Math.round(lot.distance_km * 1000), // km를 m로 변환
+            category: "거리기반 추천 주차장",
+            parking_code: lot.parking_code,
+            tel: lot.tel,
+            pay_yn_name: lot.pay_yn_name,
+            recommendation_type: "distance",
+          }));
+        }
+
+        // 중복 주차장 찾기 (parking_code 기준)
+        const aiCodes = new Set(aiParkingLots.map(lot => lot.parking_code));
+        const distanceCodes = new Set(distanceParkingLots.map(lot => lot.parking_code));
+        const duplicateCodes = new Set([...aiCodes].filter(code => distanceCodes.has(code)));
+
+        console.log("🔍 중복 분석:", {
+          AI추천수: aiCodes.size,
+          거리기반추천수: distanceCodes.size,
+          중복주차장수: duplicateCodes.size,
+          중복코드들: Array.from(duplicateCodes)
+        });
+
+        // 마커 생성 - 고유 ID와 위치 정보 보장
+        const timestamp = Date.now();
+        
+        if (aiParkingLots.length > 0) {
+          const aiMarkers = aiParkingLots.map((lot: any, index: number) => {
+            const isDuplicate = duplicateCodes.has(lot.parking_code);
+            
+            // 좌표 유효성 검사
+            const latitude = parseFloat(lot.mapy);
+            const longitude = parseFloat(lot.mapx);
+            
+            if (isNaN(latitude) || isNaN(longitude)) {
+              console.warn(`⚠️ 잘못된 좌표 - ${lot.title}: lat=${lot.mapy}, lng=${lot.mapx}`);
+              return null;
+            }
+            
+            return {
+              id: `ai_parking_${timestamp}_${index}_${lot.parking_code}`,
+              latitude: latitude,
+              longitude: longitude,
+              title: lot.title,
+              address: lot.address,
+              distance: lot.distance,
+              type: isDuplicate ? "both_parking" : "ai_parking",
+              congestion_level: lot.congestion_level,
+              predicted_available: lot.predicted_available,
+              color: isDuplicate ? "#FF9500" : "#007AFF", // 중복시 주황색, 아니면 파란색
+              recommendation_type: isDuplicate ? "both" : "ai",
+              parking_code: lot.parking_code,
+            };
+          }).filter(marker => marker !== null); // null 제거
+
+          console.log(`🤖 AI 마커 생성: ${aiMarkers.length}개`, aiMarkers.map(m => ({ 
+            id: m.id, 
+            title: m.title, 
+            lat: m.latitude, 
+            lng: m.longitude,
+            type: m.type 
+          })));
+
+          allParkingLots = [...aiParkingLots];
+          allMarkers = [...aiMarkers];
+        }
+
+        if (distanceParkingLots.length > 0) {
+          // 중복되지 않는 거리기반 추천만 추가
+          const uniqueDistanceLots = distanceParkingLots.filter(
+            lot => !duplicateCodes.has(lot.parking_code)
+          );
+
+          const distanceMarkers = uniqueDistanceLots.map(
+            (lot: any, index: number) => {
+              // 좌표 유효성 검사
+              const latitude = parseFloat(lot.mapy);
+              const longitude = parseFloat(lot.mapx);
+              
+              if (isNaN(latitude) || isNaN(longitude)) {
+                console.warn(`⚠️ 잘못된 좌표 - ${lot.title}: lat=${lot.mapy}, lng=${lot.mapx}`);
+                return null;
+              }
+              
+              return {
+                id: `distance_parking_${timestamp}_${index}_${lot.parking_code}`,
+                latitude: latitude,
+                longitude: longitude,
+                title: lot.title,
+                address: lot.address,
+                distance: lot.distance,
+                type: "distance_parking",
+                color: "#34C759", // 초록색
+                recommendation_type: "distance",
+                parking_code: lot.parking_code,
+              };
+            }
+          ).filter(marker => marker !== null); // null 제거
+
+          console.log(`📍 거리기반 마커 생성: ${distanceMarkers.length}개`, distanceMarkers.map(m => ({ 
+            id: m.id, 
+            title: m.title, 
+            lat: m.latitude, 
+            lng: m.longitude 
+          })));
+
+          allParkingLots = [...allParkingLots, ...uniqueDistanceLots];
+          allMarkers = [...allMarkers, ...distanceMarkers];
+        }
+
+        console.log("🎯 전체 주차장 데이터 설정:", allParkingLots);
+        console.log("🎯 전체 마커 설정:", allMarkers);
+        setNearbyParkingLots(allParkingLots);
+        setSearchMarkers(allMarkers);
+
+        // 목적지와 주차장들이 모두 보이도록 지도 범위 조정
+        if (allMarkers.length > 0) {
+          const allCoords = [
+            { latitude: result.mapy, longitude: result.mapx }, // 목적지
+            ...allMarkers.map((marker: any) => ({
+              latitude: marker.latitude,
+              longitude: marker.longitude,
+            })),
           ];
 
-          setNearbyParkingLots(dummyParkingLots);
+          // 최소/최대 좌표 계산
+          const minLat = Math.min(...allCoords.map((c) => c.latitude));
+          const maxLat = Math.max(...allCoords.map((c) => c.latitude));
+          const minLng = Math.min(...allCoords.map((c) => c.longitude));
+          const maxLng = Math.max(...allCoords.map((c) => c.longitude));
 
-          // 주차장 마커들만 설정
-          const parkingMarkers = dummyParkingLots.map((lot, index) => ({
-            id: `parking_${Date.now()}_${index}`,
-            latitude: lot.mapy,
-            longitude: lot.mapx,
-            title: lot.title,
-            address: lot.roadAddress || lot.address,
-            distance: lot.distance,
-            type: "parking",
-          }));
+          // 중심점 계산
+          const centerLat = (minLat + maxLat) / 2;
+          const centerLng = (minLng + maxLng) / 2;
 
-          setSearchMarkers(parkingMarkers);
+          console.log("🗺️ 지도 중심 조정:", { centerLat, centerLng });
+          moveToLocation(centerLat, centerLng, 13); // 조금 더 줌 아웃
+        } else {
+          // 추천 실패 시 빈 배열 설정
+          console.log("⚠️ 추천 실패, 주차장 목록 숨김");
+          setNearbyParkingLots([]);
+          setSearchMarkers([]);
         }
       } catch (apiError) {
-        console.error("API 호출 실패, 더미 데이터 사용:", apiError);
-        // API 실패 시 더미 데이터로 폴백 - 3개
-        const dummyParkingLots = [
-          {
-            title: "근처 주차장 1 (더미)",
-            address: "API 연결 실패",
-            roadAddress: "API 연결 실패",
-            mapy: result.mapy + 0.001,
-            mapx: result.mapx + 0.001,
-            distance: 100,
-            category: "주차장",
-          },
-          {
-            title: "근처 주차장 2 (더미)",
-            address: "API 연결 실패",
-            roadAddress: "API 연결 실패",
-            mapy: result.mapy - 0.001,
-            mapx: result.mapx + 0.0005,
-            distance: 150,
-            category: "주차장",
-          },
-          {
-            title: "근처 주차장 3 (더미)",
-            address: "API 연결 실패",
-            roadAddress: "API 연결 실패",
-            mapy: result.mapy + 0.0005,
-            mapx: result.mapx - 0.001,
-            distance: 120,
-            category: "주차장",
-          },
-        ];
-
-        setNearbyParkingLots(dummyParkingLots);
-
-        // 주차장 마커들만 설정
-        const parkingMarkers = dummyParkingLots.map((lot, index) => ({
-          id: `parking_${Date.now()}_${index}`,
-          latitude: lot.mapy,
-          longitude: lot.mapx,
-          title: lot.title,
-          address: lot.roadAddress || lot.address,
-          distance: lot.distance,
-          type: "parking",
-        }));
-
-        setSearchMarkers(parkingMarkers);
+        console.error("AI 추천 API 호출 실패:", apiError);
+        // API 실패 시 빈 배열 설정
+        setNearbyParkingLots([]);
+        setSearchMarkers([]);
       }
 
       setIsSearchModalVisible(false);
       setSearchText(result.title);
-      
+
       // 경로 옵션 표시
       setShowRouteOptions(true);
     } catch (error) {
@@ -466,8 +612,11 @@ export default function HomeScreen() {
       }
 
       console.log("🗺️ 경로 계산 시작:", {
-        start: { latitude: location.coords.latitude, longitude: location.coords.longitude },
-        goal: { latitude: destination.mapy, longitude: destination.mapx }
+        start: {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        },
+        goal: { latitude: destination.mapy, longitude: destination.mapx },
       });
 
       const routeData = await navigationAPI.getDirections({
@@ -484,14 +633,18 @@ export default function HomeScreen() {
 
       console.log("✅ 경로 계산 성공:", routeData);
       setCurrentRoute(routeData);
-      
+
       // 폴리라인 데이터 설정 및 변환
       if (routeData.polyline && routeData.polyline.length > 0) {
         // 백엔드에서 받은 잘못된 구조를 올바르게 변환
         const convertedPolyline = routeData.polyline.map((point: any) => {
           // 현재 구조: { longitude: [lng, lat], latitude: [lng, lat] }
           // 필요한 구조: { longitude: lng, latitude: lat }
-          if (point.longitude && Array.isArray(point.longitude) && point.longitude.length >= 2) {
+          if (
+            point.longitude &&
+            Array.isArray(point.longitude) &&
+            point.longitude.length >= 2
+          ) {
             return {
               longitude: point.longitude[0],
               latitude: point.longitude[1], // 실제로는 첫 번째가 경도, 두 번째가 위도
@@ -500,9 +653,13 @@ export default function HomeScreen() {
           // 이미 올바른 구조인 경우
           return point;
         });
-        
+
         setRoutePolyline(convertedPolyline);
-        console.log("📋 폴리라인 변환 완료:", convertedPolyline.length, "개 포인트");
+        console.log(
+          "📋 폴리라인 변환 완료:",
+          convertedPolyline.length,
+          "개 포인트"
+        );
         console.log("🔍 첫 번째 포인트:", convertedPolyline[0]);
       } else if (routeData.path && routeData.path.length > 0) {
         // path 데이터를 직접 사용
@@ -517,14 +674,17 @@ export default function HomeScreen() {
           }
         }
         setRoutePolyline(pathPolyline);
-        console.log("📋 path에서 폴리라인 생성 완료:", pathPolyline.length, "개 포인트");
+        console.log(
+          "📋 path에서 폴리라인 생성 완료:",
+          pathPolyline.length,
+          "개 포인트"
+        );
       }
     } catch (error) {
       console.error("❌ 경로 계산 전체 실패:", error);
       Alert.alert("오류", "경로를 계산할 수 없습니다.");
     }
   };
-
 
   // 네비게이션 시작 함수
   const handleStartNavigation = () => {
@@ -534,7 +694,11 @@ export default function HomeScreen() {
     }
 
     // 네비게이션 화면으로 이동
-    router.push(`/navigation?destinationLat=${selectedDestination.mapy}&destinationLng=${selectedDestination.mapx}&destinationName=${encodeURIComponent(selectedDestination.title)}` as any);
+    router.push(
+      `/navigation?destinationLat=${selectedDestination.mapy}&destinationLng=${
+        selectedDestination.mapx
+      }&destinationName=${encodeURIComponent(selectedDestination.title)}` as any
+    );
   };
 
   // 경로 삭제 함수
@@ -597,6 +761,89 @@ export default function HomeScreen() {
     setInitialLocation();
   }, []);
 
+  // 주차장 마커 클릭 핸들러
+  const handleParkingMarkerClick = async (marker: any) => {
+    try {
+      console.log("주차장 마커 클릭:", marker.title);
+
+      // 현재 위치 확인
+      if (!location) {
+        Alert.alert("위치 오류", "현재 위치를 확인할 수 없습니다. 위치 서비스를 활성화해주세요.");
+        return;
+      }
+
+      // 주차장을 새로운 목적지로 설정
+      const parkingDestination = {
+        title: marker.title,
+        address: marker.address || `위도: ${marker.latitude}, 경도: ${marker.longitude}`,
+        category: marker.type === "ai_parking" ? "AI 추천 주차장" : "거리기반 추천 주차장",
+        roadAddress: marker.address || "",
+        mapy: marker.latitude,
+        mapx: marker.longitude,
+      };
+
+      setSelectedDestination(parkingDestination);
+
+      // 목적지 마커 업데이트 (주차장으로)
+      const newDestinationMarker = {
+        id: `destination_${Date.now()}`,
+        latitude: marker.latitude,
+        longitude: marker.longitude,
+        title: marker.title,
+        address: marker.address || "",
+        type: "destination",
+      };
+      setDestinationMarker(newDestinationMarker);
+
+      // 현재 위치에서 주차장으로의 경로 계산
+      console.log("경로 계산 시작:", {
+        start: `${location.coords.latitude}, ${location.coords.longitude}`,
+        goal: `${marker.latitude}, ${marker.longitude}`,
+      });
+
+      const routeData = await navigationAPI.getDirections({
+        start: {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        },
+        goal: {
+          latitude: marker.latitude,
+          longitude: marker.longitude,
+        },
+        option: "trafast",
+      });
+
+      setCurrentRoute(routeData);
+      setRoutePolyline(routeData.polyline || []);
+
+      // 경로가 모두 보이도록 지도 범위 조정
+      const allCoords = [
+        { latitude: location.coords.latitude, longitude: location.coords.longitude },
+        { latitude: marker.latitude, longitude: marker.longitude },
+        ...(routeData.polyline || []),
+      ];
+
+      const latitudes = allCoords.map(coord => coord.latitude);
+      const longitudes = allCoords.map(coord => coord.longitude);
+      
+      const minLat = Math.min(...latitudes);
+      const maxLat = Math.max(...latitudes);
+      const minLng = Math.min(...longitudes);
+      const maxLng = Math.max(...longitudes);
+
+      const centerLat = (minLat + maxLat) / 2;
+      const centerLng = (minLng + maxLng) / 2;
+      
+      moveToLocation(centerLat, centerLng, 13);
+
+      console.log("✅ 주차장 경로 계산 완료");
+
+    } catch (error) {
+      console.error("주차장 마커 클릭 처리 오류:", error);
+      Alert.alert("오류", "해당 주차장으로의 경로를 찾을 수 없습니다.");
+    }
+  };
+
   const quickSearchItems = [
     { icon: "car", label: "주차장", color: Colors.primary },
     { icon: "business", label: "백화점", color: Colors.success },
@@ -626,7 +873,6 @@ export default function HomeScreen() {
           <NaverMapMarkerOverlay
             latitude={location.coords.latitude}
             longitude={location.coords.longitude}
-            image={Icons.reactLogo}
             width={zoom * 3} // 줌 비율에 맞춘 크기
             height={zoom * 3}
           />
@@ -644,21 +890,82 @@ export default function HomeScreen() {
         )}
 
         {/* 검색 결과 마커들 (주차장) */}
-        {searchMarkers.map((marker) => {
-          console.log(
-            `🗺️ 마커 렌더링: ${marker.type} - ${marker.title} (${marker.latitude}, ${marker.longitude})`
-          );
+        {searchMarkers.map((marker, index) => {
+          // 좌표 유효성 재검사
+          if (!marker.latitude || !marker.longitude || 
+              isNaN(marker.latitude) || isNaN(marker.longitude)) {
+            console.warn(`⚠️ 마커 렌더링 스킵 - 잘못된 좌표: ${marker.title}`);
+            return null;
+          }
+
+          // 추천 타입 구분
+          const isAIMarker = marker.type === "ai_parking";
+          const isBothMarker = marker.type === "both_parking";
+
+          // 말풍선 크기 설정 (꼬리 포함)
+          const bubbleWidth = 130;
+          const bubbleHeight = 75; // 꼬리를 포함한 높이
+
+          // 배경색 결정
+          let backgroundColor = "#34C759"; // 기본값 (거리순)
+          if (isAIMarker) backgroundColor = "#007AFF"; // AI 추천 (파란색)
+          if (isBothMarker) backgroundColor = "#FF9500"; // 둘 다 추천 (주황색)
+
+          // 고유 키 생성 (중복 방지)
+          const uniqueKey = `${marker.id}_${index}`;
+
           return (
             <NaverMapMarkerOverlay
-              key={marker.id}
+              key={uniqueKey}
               latitude={marker.latitude}
               longitude={marker.longitude}
-              width={40}
-              height={40}
+              width={bubbleWidth}
+              height={bubbleHeight}
               anchor={{ x: 0.5, y: 1 }}
-            />
+              onTap={() => handleParkingMarkerClick(marker)}
+            >
+              <View
+                key={`bubble_${uniqueKey}`}
+                collapsable={false}
+                style={[
+                  styles.markerBubble,
+                  {
+                    width: bubbleWidth,
+                    height: bubbleHeight - 15, // 꼬리 공간 제외
+                    backgroundColor: backgroundColor,
+                  },
+                ]}
+              >
+                <View style={styles.markerContent}>
+                  <Text style={styles.markerTitle} numberOfLines={1}>
+                    {marker.title}
+                  </Text>
+                  <Text style={styles.markerType}>
+                    {isBothMarker ? "🤖📍 둘 다 추천" : 
+                     isAIMarker ? "🤖 AI 추천" : "📍 거리순"}
+                  </Text>
+                  {(isAIMarker || isBothMarker) && marker.predicted_available && (
+                    <Text style={styles.markerAvailable}>
+                      {marker.predicted_available}대 예상
+                    </Text>
+                  )}
+                  <Text style={styles.markerDistance}>
+                    {Math.round(marker.distance)}m
+                  </Text>
+                </View>
+                {/* 말풍선 꼬리 */}
+                <View
+                  style={[
+                    styles.markerTail,
+                    {
+                      borderTopColor: backgroundColor,
+                    },
+                  ]}
+                />
+              </View>
+            </NaverMapMarkerOverlay>
           );
-        })}
+        }).filter(component => component !== null)}
 
         {/* 경로 폴리라인 */}
         {routePolyline.length > 0 && (
@@ -865,18 +1172,29 @@ export default function HomeScreen() {
             <View style={styles.routeInfo}>
               <View style={styles.routeDestination}>
                 <Ionicons name="location" size={16} color={Colors.primary} />
-                <Text style={styles.destinationName}>{selectedDestination.title}</Text>
+                <Text style={styles.destinationName}>
+                  {selectedDestination.title}
+                </Text>
               </View>
               {currentRoute && (
                 <View style={styles.routeStats}>
                   <View style={styles.statItem}>
                     <Ionicons name="time" size={14} color={Colors.success} />
                     <Text style={styles.statText}>
-                      {Math.round(currentRoute.duration / 60)}분
+                      {(() => {
+                        const totalMinutes = Math.round(currentRoute.duration / 60000);
+                        const hours = Math.floor(totalMinutes / 60);
+                        const minutes = totalMinutes % 60;
+                        
+                        if (hours > 0) {
+                          return `${hours}시간 ${minutes}분`;
+                        }
+                        return `${minutes}분`;
+                      })()}
                     </Text>
                   </View>
                   <View style={styles.statItem}>
-                    <Ionicons name="car" size={14} color={Colors.warning} />
+                    <Ionicons name="car" size={10} color={Colors.warning} />
                     <Text style={styles.statText}>
                       {(currentRoute.distance / 1000).toFixed(1)}km
                     </Text>
@@ -885,13 +1203,13 @@ export default function HomeScreen() {
               )}
             </View>
             <View style={styles.routeActions}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.clearRouteButton}
                 onPress={handleClearRoute}
               >
                 <Ionicons name="close" size={18} color={Colors.textSecondary} />
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.startNavigationButton}
                 onPress={handleStartNavigation}
               >
@@ -902,16 +1220,55 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* 주차장 목록 - 하단에 고정 */}
-        <View style={styles.parkingSection}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.parkingListContent}
-          >
-            {/* 선택된 목적지가 있을 때는 주변 주차장 표시, 없으면 기본 주차장 표시 */}
-            {selectedDestination
-              ? nearbyParkingLots.map((lot, index) => (
+        {/* 주차장 목록 - 목적지 선택 시에만 표시 */}
+        {/* {selectedDestination && (
+          <View style={styles.parkingSection}>
+            <View style={styles.parkingSectionHeader}>
+              <Text style={styles.parkingSectionTitle}>🅿️ 추천 주차장</Text>
+              <Text style={styles.parkingSectionSubtitle}>
+                {selectedDestination.title} 주변 - 🤖 AI 추천 (파란색) | 📍
+                거리순 (초록색)
+              </Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.parkingListContent}
+            >
+              {nearbyParkingLots.map((lot, index) => {
+                // 추천 타입 확인
+                const isAIRecommendation = lot.recommendation_type === "ai";
+                const isDistanceRecommendation =
+                  lot.recommendation_type === "distance";
+
+                // 혼잡도에 따른 색상 결정
+                const getStatusColor = (congestionLevel: string) => {
+                  switch (congestionLevel) {
+                    case "Quiet":
+                      return Colors.success;
+                    case "Normal":
+                      return Colors.warning;
+                    case "Congested":
+                      return Colors.error;
+                    default:
+                      return Colors.gray500;
+                  }
+                };
+
+                const getStatusText = (congestionLevel: string) => {
+                  switch (congestionLevel) {
+                    case "Quiet":
+                      return "한적";
+                    case "Normal":
+                      return "보통";
+                    case "Congested":
+                      return "혼잡";
+                    default:
+                      return "검색됨";
+                  }
+                };
+
+                return (
                   <TouchableOpacity
                     key={`nearby_${index}`}
                     style={styles.parkingCard}
@@ -923,12 +1280,30 @@ export default function HomeScreen() {
                         <View
                           style={[
                             styles.statusTag,
-                            { backgroundColor: Colors.success },
+                            {
+                              backgroundColor: isAIRecommendation
+                                ? getStatusColor(lot.congestion_level)
+                                : Colors.success,
+                            },
                           ]}
                         >
-                          <Text style={styles.statusText}>검색됨</Text>
+                          <Text style={styles.statusText}>
+                            {isAIRecommendation
+                              ? getStatusText(lot.congestion_level)
+                              : getStatusText(lot.category)}
+                          </Text>
                         </View>
                       </View>
+                      {isAIRecommendation && (
+                        <View style={styles.aiTag}>
+                          <Text style={styles.aiTagText}>🤖 AI</Text>
+                        </View>
+                      )}
+                      {isDistanceRecommendation && (
+                        <View style={styles.distanceTag}>
+                          <Text style={styles.distanceTagText}>📍 거리순</Text>
+                        </View>
+                      )}
                     </View>
 
                     <Text style={styles.parkingAddress}>
@@ -946,6 +1321,18 @@ export default function HomeScreen() {
                           {Math.round(lot.distance)}m
                         </Text>
                       </View>
+                      {isAIRecommendation && (
+                        <View style={styles.detailItem}>
+                          <Ionicons
+                            name="car"
+                            size={14}
+                            color={Colors.success}
+                          />
+                          <Text style={styles.detailText}>
+                            {lot.predicted_available}대 예상
+                          </Text>
+                        </View>
+                      )}
                       <View style={styles.detailItem}>
                         <Ionicons
                           name="business"
@@ -957,83 +1344,31 @@ export default function HomeScreen() {
                     </View>
 
                     <View style={styles.cardFooter}>
-                      <Text style={styles.priceText}>주차 가능</Text>
-                      <Text style={styles.availabilityText}>
-                        목적지에서 {Math.round(lot.distance)}m
-                      </Text>
+                      {isAIRecommendation ? (
+                        <>
+                          <Text style={styles.priceText}>
+                            점수: {lot.total_score?.toFixed(1)}
+                          </Text>
+                          <Text style={styles.availabilityText}>
+                            {lot.pay_yn_name || "주차 가능"} •{" "}
+                            {Math.round(lot.distance)}m
+                          </Text>
+                        </>
+                      ) : (
+                        <>
+                          <Text style={styles.priceText}>주차 가능</Text>
+                          <Text style={styles.availabilityText}>
+                            목적지에서 {Math.round(lot.distance)}m
+                          </Text>
+                        </>
+                      )}
                     </View>
                   </TouchableOpacity>
-                ))
-              : parkingLots.map((lot) => (
-                  <TouchableOpacity
-                    key={lot.id}
-                    style={styles.parkingCard}
-                    onPress={() => navigateToDetail(lot.id)}
-                  >
-                    <View style={styles.cardHeader}>
-                      <View style={styles.cardTitle}>
-                        <Text style={styles.parkingName}>{lot.name}</Text>
-                        <View
-                          style={[
-                            styles.statusTag,
-                            { backgroundColor: lot.statusColor },
-                          ]}
-                        >
-                          <Text style={styles.statusText}>{lot.status}</Text>
-                        </View>
-                      </View>
-                      <TouchableOpacity
-                        style={styles.favoriteButton}
-                        onPress={() => handleFavoriteToggle(lot)}
-                        disabled={isLoading}
-                      >
-                        <Ionicons
-                          name={isFavorite(lot.id) ? "heart" : "heart-outline"}
-                          size={20}
-                          color={
-                            isFavorite(lot.id)
-                              ? Colors.error
-                              : Colors.textTertiary
-                          }
-                        />
-                      </TouchableOpacity>
-                    </View>
-
-                    <Text style={styles.parkingAddress}>{lot.address}</Text>
-
-                    <View style={styles.parkingDetails}>
-                      <View style={styles.detailItem}>
-                        <Ionicons
-                          name="location"
-                          size={14}
-                          color={Colors.primary}
-                        />
-                        <Text style={styles.detailText}>{lot.distance}</Text>
-                      </View>
-                      <View style={styles.detailItem}>
-                        <Ionicons
-                          name="time"
-                          size={14}
-                          color={Colors.success}
-                        />
-                        <Text style={styles.detailText}>{lot.time}</Text>
-                      </View>
-                      <View style={styles.detailItem}>
-                        <Ionicons name="star" size={14} color="#FFD700" />
-                        <Text style={styles.detailText}>{lot.rating}</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.cardFooter}>
-                      <Text style={styles.priceText}>{lot.price}</Text>
-                      <Text style={styles.availabilityText}>
-                        {lot.available}자리 / {lot.total}자리
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-          </ScrollView>
-        </View>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )} */}
       </SafeAreaView>
     </View>
   );
@@ -1211,6 +1546,25 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     maxHeight: "45%",
     paddingBottom: Spacing.base,
+  },
+  parkingSectionHeader: {
+    paddingHorizontal: Spacing.base,
+    paddingTop: Spacing.base,
+    paddingBottom: Spacing.sm,
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    ...Shadows.base,
+  },
+  parkingSectionTitle: {
+    fontSize: Typography.lg,
+    fontWeight: "700",
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
+  parkingSectionSubtitle: {
+    fontSize: Typography.sm,
+    color: Colors.textSecondary,
   },
   parkingListContent: {
     paddingHorizontal: Spacing.base,
@@ -1464,7 +1818,7 @@ const styles = StyleSheet.create({
     ...Shadows.base,
     zIndex: 100,
   },
-  
+
   // 경로 옵션 패널 스타일
   routeOptionsPanel: {
     position: "absolute",
@@ -1525,12 +1879,100 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     backgroundColor: Colors.primary,
     paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.base,
+    paddingHorizontal: Spacing.sm,
     borderRadius: BorderRadius.lg,
   },
   startNavigationText: {
     color: Colors.white,
     fontSize: Typography.sm,
     fontWeight: "600",
+  },
+
+  // AI 추천 태그 스타일
+  aiTag: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
+    marginTop: Spacing.xs,
+  },
+  aiTagText: {
+    fontSize: Typography.xs,
+    color: Colors.white,
+    fontWeight: "600",
+  },
+
+  // 거리순 추천 태그 스타일
+  distanceTag: {
+    backgroundColor: Colors.success,
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
+    marginTop: Spacing.xs,
+  },
+  distanceTagText: {
+    fontSize: Typography.xs,
+    color: Colors.white,
+    fontWeight: "600",
+  },
+
+  // 말풍선 마커 스타일
+  markerBubble: {
+    borderRadius: BorderRadius.lg,
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+    opacity: 0.7,
+    paddingVertical: 3,
+    ...Shadows.lg,
+  },
+  markerContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    color: Colors.black,
+  },
+  markerTitle: {
+    fontSize: Typography.xs,
+    fontWeight: "600",
+    color: Colors.white,
+    textAlign: "center",
+    marginBottom: 2,
+  },
+  markerType: {
+    fontSize: Typography.xs - 1,
+    color: Colors.white,
+    textAlign: "center",
+    opacity: 0.9,
+    marginBottom: 1,
+  },
+  markerAvailable: {
+    fontSize: Typography.xs - 1,
+    color: Colors.white,
+    textAlign: "center",
+    fontWeight: "500",
+    marginBottom: 1,
+  },
+  markerDistance: {
+    fontSize: Typography.xs - 1,
+    color: Colors.white,
+    textAlign: "center",
+    opacity: 0.9,
+  },
+  markerTail: {
+    position: "absolute",
+    bottom: -18,
+    left: "50%",
+    marginLeft: -18,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 18,
+    borderRightWidth: 18,
+    borderTopWidth: 18,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    // borderTopColor will be set dynamically in component
   },
 });

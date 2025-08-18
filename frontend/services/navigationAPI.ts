@@ -10,7 +10,7 @@ const getApiBaseUrl = () => {
       console.log(
         "📱 iOS 환경 - 핫스팟 Client Isolation 문제로 인해 터널 URL 강제 사용"
       );
-      const tunnelUrl = "https://85d323e24909.ngrok-free.app/api";
+      const tunnelUrl = "https://a23b16248eb1.ngrok-free.app/api";
       console.log("🚇 백엔드 터널 URL 사용:", tunnelUrl);
       return tunnelUrl;
     }
@@ -131,6 +131,7 @@ class NavigationAPI {
     const config: RequestInit = {
       headers: {
         "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true",
         ...options.headers,
       },
       ...options,
@@ -273,6 +274,145 @@ class NavigationAPI {
         radius,
       }),
     });
+  }
+
+  async getParkingRecommendations(
+    destinationLat: number,
+    destinationLng: number,
+    numRecommendations: number = 3
+  ): Promise<{
+    success: boolean;
+    data: Array<{
+      parking_code: string;
+      parking_name: string;
+      addr: string;
+      coordinates: [number, number];
+      distance_km: number;
+      tel?: string;
+      pay_yn_name?: string;
+      weekday_begin?: string;
+      weekday_end?: string;
+    }>;
+    total_found: number;
+    message: string;
+  }> {
+    const body = {
+      destination_lat: destinationLat,
+      destination_lng: destinationLng,
+      num_recommendations: numRecommendations,
+    };
+
+    // 거리기반 추천 API는 전체 응답 객체를 반환해야 함
+    const url = `${API_BASE_URL}/parking/recommend`;
+    const config: RequestInit = {
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true",
+      },
+      method: "POST",
+      body: JSON.stringify(body),
+    };
+
+    console.log("🌐 거리기반 API 요청:", url);
+    console.log("⚙️ 거리기반 요청 옵션:", config);
+
+    try {
+      const response = await fetch(url, config);
+      console.log("📡 거리기반 응답 상태:", response.status);
+
+      const result = await response.json();
+      console.log("📦 거리기반 응답 전체:", result);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return result;
+    } catch (error) {
+      console.error(`❌ 거리기반 API request failed:`, error);
+      throw error;
+    }
+  }
+
+  async getAIParkingRecommendations(
+    destinationLat: number,
+    destinationLng: number,
+    numRecommendations: number = 3,
+    predictionTime?: string
+  ): Promise<{
+    success: boolean;
+    data: Array<{
+      parking_code: string;
+      parking_name: string;
+      addr: string;
+      coordinates: [number, number];
+      predicted_available: number;
+      congestion_level: string;
+      congestion_rate: number;
+      distance_km: number;
+      total_score: number;
+      tel?: string;
+      pay_yn_name?: string;
+      weekday_begin?: string;
+      weekday_end?: string;
+    }>;
+    total_found: number;
+    prediction_time: string;
+    models_trained: number;
+    message: string;
+  }> {
+    const body: any = {
+      destination_lat: destinationLat,
+      destination_lng: destinationLng,
+      num_recommendations: numRecommendations,
+    };
+
+    if (predictionTime) {
+      body.prediction_time = predictionTime;
+    }
+
+    // AI 추천 API는 전체 응답 객체를 반환해야 함
+    const url = `${API_BASE_URL}/parking/recommend-ai`;
+    const config: RequestInit = {
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true",
+      },
+      method: "POST",
+      body: JSON.stringify(body),
+    };
+
+    // AI 추천은 Prophet 모델 학습으로 인해 시간이 오래 걸릴 수 있음
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90초 타임아웃
+    config.signal = controller.signal;
+
+    console.log("🌐 AI API 요청:", url);
+    console.log("⚙️ AI 요청 옵션:", config);
+
+    try {
+      const response = await fetch(url, config);
+      console.log("📡 AI 응답 상태:", response.status);
+
+      const result = await response.json();
+      console.log("📦 AI 응답 전체:", result);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      clearTimeout(timeoutId); // 성공 시 타임아웃 해제
+      return result;
+    } catch (error) {
+      clearTimeout(timeoutId); // 에러 시 타임아웃 해제
+      console.error(`❌ AI API request failed:`, error);
+
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error("AI 추천 요청이 시간 초과되었습니다. (90초)");
+      }
+
+      throw error;
+    }
   }
 }
 
