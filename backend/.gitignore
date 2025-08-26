@@ -52,3 +52,6 @@ parking.db
 parking
 update_coordinates.py
 parking.ipynb
+
+# firestore key
+juchajang-fbcfe-firebase-adminsdk-fbsvc-5fee059275
