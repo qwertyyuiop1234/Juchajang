@@ -1,18 +1,16 @@
 import admin from 'firebase-admin';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+dotenv.config();
 
-// Firebase Admin SDK 서비스 계정 키 파일 경로
-const serviceAccountPath = path.join(__dirname, '../../juchajang-fbcfe-firebase-adminsdk-fbsvc-5fee059275.json');
+// Firebase Admin SDK 서비스 계정 키를 환경 변수에서 가져오기
+const serviceAccountKey = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
 
 // Firebase Admin 초기화
 if (!admin.apps.length) {
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccountPath),
-    // 프로젝트 ID는 서비스 계정 키 파일에서 자동으로 가져옴
+    credential: admin.credential.cert(serviceAccountKey),
+    // 프로젝트 ID는 서비스 계정 키에서 자동으로 가져옴
   });
 }
 

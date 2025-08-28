@@ -13,6 +13,15 @@ import numpy as np
 import warnings
 warnings.filterwarnings('ignore')
 
+# 환경 변수 로드
+try:
+    from dotenv import load_dotenv
+    # .env 파일 경로 찾기 (backend/.env)
+    env_path = Path(__file__).parent.parent / '.env'
+    load_dotenv(dotenv_path=env_path)
+except ImportError:
+    print("python-dotenv가 설치되지 않음. 환경 변수가 시스템에 설정되어 있다고 가정합니다.", file=sys.stderr)
+
 try:
     import firebase_admin
     from firebase_admin import credentials, firestore
@@ -36,15 +45,18 @@ class FirestoreHelper:
             raise ImportError("Firebase Admin SDK가 필요합니다")
         
         try:
-            # 서비스 계정 키 파일 경로
-            service_account_path = Path(__file__).parent.parent / 'juchajang-fbcfe-firebase-adminsdk-fbsvc-5fee059275.json'
+            # 환경 변수에서 서비스 계정 키 가져오기
+            service_account_key = os.getenv('FIREBASE_SERVICE_ACCOUNT_KEY')
             
-            if not service_account_path.exists():
-                raise FileNotFoundError(f"서비스 계정 키 파일을 찾을 수 없습니다: {service_account_path}")
+            if not service_account_key:
+                raise ValueError("FIREBASE_SERVICE_ACCOUNT_KEY 환경 변수가 설정되지 않았습니다")
+            
+            # JSON 문자열을 파싱
+            service_account_dict = json.loads(service_account_key)
             
             # Firebase 앱이 이미 초기화되어 있지 않은 경우에만 초기화
             if not firebase_admin._apps:
-                cred = credentials.Certificate(str(service_account_path))
+                cred = credentials.Certificate(service_account_dict)
                 firebase_admin.initialize_app(cred)
             
             # Firestore 클라이언트 생성
