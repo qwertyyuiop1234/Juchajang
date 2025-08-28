@@ -11,10 +11,10 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.coma.jca",
+      "deploymentTarget": "15.1",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "이 앱은 현재 위치를 확인하여 주변 주차장을 찾기 위해 위치 정보를 사용합니다.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "이 앱은 현재 위치를 확인하여 주변 주차장을 찾기 위해 위치 정보를 사용합니다.",
-        "NSCalendarsUsageDescription": "앱에서 일정을 관리하기 위해 캘린더 접근 권한이 필요합니다."
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "이 앱은 현재 위치를 확인하여 주변 주차장을 찾기 위해 위치 정보를 사용합니다."
       }
     },
     "android": {
@@ -68,6 +68,9 @@
       [
         "expo-build-properties",
         {
+          "ios": {
+            "deploymentTarget": "15.1"
+          },
           "android": {
             "extraMavenRepos": [
               "https://repository.map.naver.com/archive/maven"

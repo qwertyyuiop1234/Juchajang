@@ -1,0 +1,19 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "parking_status",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "parking_code",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "collected_at",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

@@ -49,13 +49,18 @@ class DataMigrator {
           parking_code,
           parking_name,
           addr,
-          coordinates,
           lat_wgs84,
           lng_wgs84,
           tel,
           pay_yn_name,
           weekday_begin,
-          weekday_end
+          weekday_end,
+          parking_type,
+          oper_day,
+          fee_info,
+          rates,
+          time_rate,
+          day_maximum
         FROM parking_lots
       `;
 
@@ -118,17 +123,37 @@ class DataMigrator {
         const lot = parkingLots[i];
         
         try {
+          // coordinates 필드 생성 (lat, lng가 있는 경우)
+          let coordinates = null;
+          if (lot.lat_wgs84 && lot.lng_wgs84) {
+            try {
+              const lat = parseFloat(lot.lat_wgs84);
+              const lng = parseFloat(lot.lng_wgs84);
+              if (!isNaN(lat) && !isNaN(lng)) {
+                coordinates = `${lat},${lng}`;
+              }
+            } catch (e) {
+              // 좌표 파싱 실패는 무시
+            }
+          }
+
           await firestoreService.saveParkingLot({
             parking_code: lot.parking_code,
             parking_name: lot.parking_name,
             addr: lot.addr,
-            coordinates: lot.coordinates,
+            coordinates: coordinates,
             lat_wgs84: lot.lat_wgs84,
             lng_wgs84: lot.lng_wgs84,
             tel: lot.tel,
             pay_yn_name: lot.pay_yn_name,
             weekday_begin: lot.weekday_begin,
-            weekday_end: lot.weekday_end
+            weekday_end: lot.weekday_end,
+            parking_type: lot.parking_type,
+            oper_day: lot.oper_day,
+            fee_info: lot.fee_info,
+            rates: lot.rates,
+            time_rate: lot.time_rate,
+            day_maximum: lot.day_maximum
           });
 
           this.stats.parkingLots.success++;

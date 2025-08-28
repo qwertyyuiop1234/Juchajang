@@ -20,6 +20,10 @@ export interface ParkingLot {
   description?: string; // 주차공간 설명
   images?: string[]; // 주차공간 사진
   rules?: string[]; // 이용 규칙
+  totalReviews?: number; // 전체 리뷰 수
+  operatingHours?: string; // 운영시간
+  phone?: string; // 전화번호
+  features?: string[]; // 편의시설
 }
 
 export interface TimeSlot {

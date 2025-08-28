@@ -27,6 +27,7 @@ import {
   NaverMapPolylineOverlay,
 } from "@mj-studio/react-native-naver-map";
 import navigationAPI from "../../services/navigationAPI";
+import { externalNavigationService } from "../../services/externalNavigationService";
 
 export default function HomeScreen() {
   // Initial camera
@@ -687,17 +688,61 @@ export default function HomeScreen() {
   };
 
   // 네비게이션 시작 함수
-  const handleStartNavigation = () => {
+  const handleStartNavigation = async () => {
     if (!selectedDestination || !currentRoute) {
       Alert.alert("오류", "대상지와 경로 정보가 필요합니다.");
       return;
     }
 
-    // 네비게이션 화면으로 이동
-    router.push(
-      `/navigation?destinationLat=${selectedDestination.mapy}&destinationLng=${
-        selectedDestination.mapx
-      }&destinationName=${encodeURIComponent(selectedDestination.title)}` as any
+    console.log('선택된 목적지 전체:', selectedDestination);
+    console.log('원본 좌표:', { mapy: selectedDestination.mapy, mapx: selectedDestination.mapx });
+    console.log('원본 좌표 타입:', typeof selectedDestination.mapy, typeof selectedDestination.mapx);
+    
+    // 네이버 API 좌표 처리
+    let latitude, longitude;
+    
+    // 좌표값이 정수형 큰 값인지 확인 (10^7 단위)
+    if (selectedDestination.mapy > 1000000) {
+      latitude = parseFloat(selectedDestination.mapy) / 10000000;
+      longitude = parseFloat(selectedDestination.mapx) / 10000000;
+      console.log('좌표를 10^7으로 나누어 변환');
+    } else {
+      latitude = parseFloat(selectedDestination.mapy);
+      longitude = parseFloat(selectedDestination.mapx);
+      console.log('좌표를 그대로 사용');
+    }
+    
+    console.log('최종 변환된 좌표:', { latitude, longitude });
+    
+    const destination = {
+      latitude,
+      longitude,
+      name: selectedDestination.title,
+      address: selectedDestination.address || selectedDestination.roadAddress
+    };
+
+    // 외부 네비게이션 앱 선택 다이얼로그 표시
+    Alert.alert(
+      '길찾기 방법 선택',
+      '어떤 방식으로 길찾기를 하시겠습니까?',
+      [
+        {
+          text: '외부 네비게이션 앱',
+          onPress: () => externalNavigationService.showNavigationOptions(destination)
+        },
+        {
+          text: '앱 내 네비게이션',
+          onPress: () => router.push(
+            `/navigation?destinationLat=${selectedDestination.mapy}&destinationLng=${
+              selectedDestination.mapx
+            }&destinationName=${encodeURIComponent(selectedDestination.title)}` as any
+          )
+        },
+        {
+          text: '취소',
+          style: 'cancel'
+        }
+      ]
     );
   };
 

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Switch, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Stack } from 'expo-router';
 import { useFavorites, ParkingLot } from '../contexts/FavoritesContext';
+import { externalNavigationService } from '../services/externalNavigationService';
 
 export default function ParkingDetailScreen() {
   const router = useRouter();
@@ -32,6 +33,7 @@ export default function ParkingDetailScreen() {
       phone: '02-1234-5678',
       features: ['지하주차', '24시간 운영', 'CCTV', '보안관'],
       description: '강남역 1번 출구에서 도보 2분 거리에 위치한 지하주차장입니다. 편리한 접근성과 안전한 주차 환경을 제공합니다.',
+      type: 'public' as const,
     },
     2: {
       id: 2,
@@ -50,6 +52,7 @@ export default function ParkingDetailScreen() {
       phone: '02-2345-6789',
       features: ['지상주차', '공영주차장', 'CCTV', '무료 WiFi'],
       description: '역삼역 근처에 위치한 공영주차장입니다. 합리적인 요금과 안전한 주차 환경을 제공합니다.',
+      type: 'public' as const,
     },
     3: {
       id: 3,
@@ -68,6 +71,7 @@ export default function ParkingDetailScreen() {
       phone: '02-3456-7890',
       features: ['백화점 연계', '할인 혜택', 'CCTV', '보안관'],
       description: '선릉역 백화점과 연계된 주차장입니다. 쇼핑 시 할인 혜택을 받을 수 있습니다.',
+      type: 'private' as const,
     },
     4: {
       id: 4,
@@ -86,6 +90,7 @@ export default function ParkingDetailScreen() {
       phone: '02-4567-8901',
       features: ['지상주차', '24시간 운영', 'CCTV', '전기차 충전'],
       description: '테헤란로에 위치한 지상주차장입니다. 전기차 충전시설이 완비되어 있습니다.',
+      type: 'public' as const,
     },
   };
 
@@ -119,7 +124,7 @@ export default function ParkingDetailScreen() {
     router.push('/(tabs)/reservation' as any);
   };
 
-  const handleNavigation = () => {
+  const handleNavigation = async () => {
     // 주차장 좌표 (실제로는 API에서 받아와야 함)
     const parkingCoordinates = {
       1: { lat: 37.4979462, lng: 127.0279958 }, // 강남역 지하주차장
@@ -130,7 +135,36 @@ export default function ParkingDetailScreen() {
 
     const coords = parkingCoordinates[parkingInfo.id as keyof typeof parkingCoordinates] || parkingCoordinates[1];
     
-    router.push(`/navigation?destinationLat=${coords.lat}&destinationLng=${coords.lng}&destinationName=${encodeURIComponent(parkingInfo.name)}` as any);
+    console.log('주차장 좌표:', coords);
+    
+    const destination = {
+      latitude: coords.lat,
+      longitude: coords.lng,
+      name: parkingInfo.name,
+      address: parkingInfo.address
+    };
+    
+    console.log('네비게이션 목적지:', destination);
+
+    // 외부 네비게이션 앱 선택 다이얼로그 표시
+    Alert.alert(
+      '길찾기 방법 선택',
+      '어떤 방식으로 길찾기를 하시겠습니까?',
+      [
+        {
+          text: '외부 네비게이션 앱',
+          onPress: () => externalNavigationService.showNavigationOptions(destination)
+        },
+        {
+          text: '앱 내 네비게이션',
+          onPress: () => router.push(`/navigation?destinationLat=${coords.lat}&destinationLng=${coords.lng}&destinationName=${encodeURIComponent(parkingInfo.name)}` as any)
+        },
+        {
+          text: '취소',
+          style: 'cancel'
+        }
+      ]
+    );
   };
 
   const handleReview = () => {
@@ -283,7 +317,7 @@ export default function ParkingDetailScreen() {
           <View style={styles.infoSection}>
             <Text style={styles.sectionTitle}>편의시설</Text>
             <View style={styles.featuresList}>
-              {parkingInfo.features.map((feature, index) => (
+              {parkingInfo.features?.map((feature, index) => (
                 <View key={index} style={styles.featureItem}>
                   <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
                   <Text style={styles.featureText}>{feature}</Text>
