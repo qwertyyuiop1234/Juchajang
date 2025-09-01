@@ -9,9 +9,9 @@ export const TOSS_PAYMENTS_CONFIG = {
   BASE_URL: 'https://api.tosspayments.com',
   PAYMENTS_URL: 'https://api.tosspayments.com/v1/payments',
   
-  // 결제 성공/실패 URL (실제 운영 시에는 실제 도메인으로 변경)
-  SUCCESS_URL: ENV.PAYMENT_SUCCESS_URL || 'http://localhost:3000/payment/success',
-  FAIL_URL: ENV.PAYMENT_FAIL_URL || 'http://localhost:3000/payment/fail',
+  // 결제 성공/실패 URL (ngrok 터널 사용)
+  SUCCESS_URL: ENV.PAYMENT_SUCCESS_URL || 'https://53fb5fcb1501.ngrok-free.app/payment/success',
+  FAIL_URL: ENV.PAYMENT_FAIL_URL || 'https://53fb5fcb1501.ngrok-free.app/payment/fail',
   
   // 지원하는 결제 수단
   PAYMENT_METHODS: {

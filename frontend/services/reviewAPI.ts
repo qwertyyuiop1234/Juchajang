@@ -1,11 +1,10 @@
 // 리뷰 API 서비스
 
-// API URL 자동 감지 (ngrok 우선, 실패 시 로컬 IP)
-const NGROK_URL = 'https://53fb5fcb1501.ngrok-free.app/api';
-const LOCAL_URL = 'http://192.168.219.113:5001/api';
+// ngrok 터널 URL 사용 (실제 연결)
+const API_BASE_URL = 'https://53fb5fcb1501.ngrok-free.app/api';
 
-// ngrok이 작동하는지 확인하고 URL 결정
-const API_BASE_URL = NGROK_URL; // 우선 ngrok 시도
+// 로컬 IP 사용 시 (ngrok 대신)
+// const API_BASE_URL = 'http://192.168.219.113:5001/api';
 
 export interface ReviewRequest {
   parkingId: string;

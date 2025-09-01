@@ -69,7 +69,11 @@ const getApiBaseUrl = () => {
   return "https://your-production-api.com/api";
 };
 
-const API_BASE_URL = getApiBaseUrl();
+// ngrok 터널 URL 사용 (고정)
+const API_BASE_URL = 'https://53fb5fcb1501.ngrok-free.app/api';
+
+// 동적 감지 사용 시
+// const API_BASE_URL = getApiBaseUrl();
 
 // 디버깅을 위해 API URL 로그 출력
 console.log("🔍 API_BASE_URL:", API_BASE_URL);

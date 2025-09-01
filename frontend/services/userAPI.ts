@@ -1,6 +1,6 @@
 import { auth } from '../config/firebase';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = 'https://53fb5fcb1501.ngrok-free.app';
 
 // 인증된 요청을 위한 헤더 가져오기
 const getAuthHeaders = async () => {
@@ -21,7 +21,10 @@ export const getUserProfile = async () => {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
-      headers,
+      headers: {
+        ...headers,
+        'ngrok-skip-browser-warning': 'true', // ngrok 브라우저 경고 우회
+      },
     });
 
     if (!response.ok) {
