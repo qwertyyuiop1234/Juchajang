@@ -4,9 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../../constants/Styles';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { user, logout } = useAuth();
   const [notifications, setNotifications] = useState(true);
   const [locationServices, setLocationServices] = useState(true);
   const [autoLogin, setAutoLogin] = useState(false);
@@ -135,8 +137,13 @@ export default function SettingsScreen() {
         {
           text: '로그아웃',
           style: 'destructive',
-          onPress: () => {
-            Alert.alert('로그아웃되었습니다.');
+          onPress: async () => {
+            try {
+              await logout();
+              router.replace('/auth');
+            } catch (error) {
+              Alert.alert('오류', '로그아웃 중 오류가 발생했습니다.');
+            }
           },
         },
       ]
@@ -175,19 +182,23 @@ export default function SettingsScreen() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* 사용자 정보 */}
-        <View style={styles.userSection}>
-          <View style={styles.userAvatar}>
-            <Ionicons name="person" size={32} color={Colors.white} />
+        {user && (
+          <View style={styles.userSection}>
+            <View style={styles.userAvatar}>
+              <Ionicons name="person" size={32} color={Colors.white} />
+            </View>
+            <View style={styles.userInfo}>
+              <Text style={styles.userName}>
+                {user.displayName || '사용자'}
+              </Text>
+              <Text style={styles.userEmail}>{user.email}</Text>
+              <Text style={styles.userStatus}>일반 회원</Text>
+            </View>
+            <TouchableOpacity style={styles.editButton}>
+              <Ionicons name="create-outline" size={20} color={Colors.primary} />
+            </TouchableOpacity>
           </View>
-          <View style={styles.userInfo}>
-            <Text style={styles.userName}>홍길동</Text>
-            <Text style={styles.userEmail}>hong@example.com</Text>
-            <Text style={styles.userStatus}>일반 회원</Text>
-          </View>
-          <TouchableOpacity style={styles.editButton}>
-            <Ionicons name="create-outline" size={20} color={Colors.primary} />
-          </TouchableOpacity>
-        </View>
+        )}
 
         {/* 설정 섹션들 */}
         {settingsSections.map((section) => (

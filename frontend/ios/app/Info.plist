@@ -37,6 +37,14 @@
           <string>exp+jca</string>
         </array>
       </dict>
+      <dict>
+        <key>CFBundleURLName</key>
+        <string>google-signin</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>com.googleusercontent.apps.662838651353-rdv5700769p5661rh8384n4sl1cucbap</string>
+        </array>
+      </dict>
     </array>
     <key>CFBundleVersion</key>
     <string>1</string>

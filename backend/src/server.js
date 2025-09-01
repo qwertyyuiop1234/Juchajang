@@ -3,6 +3,7 @@ import cors from "cors";
 import { ENV } from "./config/env.js";
 import navigationRoutes from "./routes/navigation.js";
 import parkingRoutes from "./routes/parking.js";
+import usersRoutes from "./routes/users.js";
 
 const PORT = ENV.PORT;
 const app = express();
@@ -17,6 +18,7 @@ app.get("/api/health", (req, res) => {
 
 app.use("/api/navigation", navigationRoutes);
 app.use("/api/parking", parkingRoutes);
+app.use("/api/users", usersRoutes);
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log("Express server running on PORT : ", PORT);
