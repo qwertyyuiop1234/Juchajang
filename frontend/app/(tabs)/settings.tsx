@@ -23,6 +23,12 @@ export default function SettingsScreen() {
           showArrow: true,
         },
         { 
+          text: '내 리뷰', 
+          icon: 'chatbubble-outline',
+          onPress: () => router.push('/my-reviews' as any),
+          showArrow: true,
+        },
+        { 
           text: '실명 인증', 
           icon: 'shield-checkmark-outline',
           onPress: () => Alert.alert('실명 인증', '실명 인증 기능은 곧 구현될 예정입니다.'),

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Switch, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,6 +6,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Stack } from 'expo-router';
 import { useFavorites, ParkingLot } from '../contexts/FavoritesContext';
 import { externalNavigationService } from '../services/externalNavigationService';
+import { reviewAPI, Review } from '../services/reviewAPI';
+import ReviewCard from '../components/ReviewCard';
 
 export default function ParkingDetailScreen() {
   const router = useRouter();
@@ -13,6 +15,8 @@ export default function ParkingDetailScreen() {
   const { addFavorite, removeFavorite, isFavorite, isLoading } = useFavorites();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [selectedDay, setSelectedDay] = useState('월');
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
 
   // 주차장 데이터베이스 (실제로는 API에서 받아올 데이터)
   const parkingData: Record<number, ParkingLot> = {
@@ -123,6 +127,35 @@ export default function ParkingDetailScreen() {
     // 예약 로직
     router.push('/(tabs)/reservation' as any);
   };
+
+  const handlePayment = () => {
+    // 결제 페이지로 이동
+    router.push(`/payment?parkingId=${parkingInfo.id}&parkingName=${encodeURIComponent(parkingInfo.name)}` as any);
+  };
+
+  const loadReviews = async () => {
+    try {
+      setReviewsLoading(true);
+      const response = await reviewAPI.getReviewsByParkingId(parkingInfo.id.toString(), 3); // 최대 3개만 미리보기
+      if (response.success && response.data) {
+        setReviews(response.data);
+      }
+    } catch (error) {
+      console.error('리뷰 로드 실패:', error);
+      // 서버 연결 실패 시 빈 배열로 설정 (에러 메시지는 표시하지 않음)
+      setReviews([]);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  const handleViewAllReviews = () => {
+    router.push(`/review-list?parkingId=${parkingInfo.id}&parkingName=${encodeURIComponent(parkingInfo.name)}` as any);
+  };
+
+  useEffect(() => {
+    loadReviews();
+  }, [parkingInfo.id]);
 
   const handleNavigation = async () => {
     // 주차장 좌표 (실제로는 API에서 받아와야 함)
@@ -358,6 +391,7 @@ export default function ParkingDetailScreen() {
                 <Text style={styles.reviewButtonText}>리뷰 작성</Text>
               </TouchableOpacity>
             </View>
+            
             <View style={styles.ratingSection}>
               <View style={styles.rating}>
                 <Ionicons name="star" size={16} color="#FFD700" />
@@ -365,6 +399,35 @@ export default function ParkingDetailScreen() {
                 <Text style={styles.reviewCount}>({parkingInfo.totalReviews}개 리뷰)</Text>
               </View>
             </View>
+
+            {/* 리뷰 목록 미리보기 */}
+            {reviewsLoading ? (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>리뷰를 불러오는 중...</Text>
+              </View>
+            ) : reviews.length > 0 ? (
+              <View style={styles.reviewsPreview}>
+                {reviews.map((review) => (
+                  <ReviewCard
+                    key={review.id}
+                    review={review}
+                    onPress={() => handleViewAllReviews()}
+                  />
+                ))}
+                {reviews.length >= 3 && (
+                  <TouchableOpacity style={styles.viewAllButton} onPress={handleViewAllReviews}>
+                    <Text style={styles.viewAllText}>모든 리뷰 보기</Text>
+                    <Ionicons name="chevron-forward" size={16} color="#007AFF" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : (
+              <View style={styles.noReviewsContainer}>
+                <Ionicons name="chatbubble-outline" size={32} color="#ccc" />
+                <Text style={styles.noReviewsText}>아직 리뷰가 없습니다</Text>
+                <Text style={styles.noReviewsSubtext}>첫 번째 리뷰를 작성해보세요!</Text>
+              </View>
+            )}
           </View>
         </ScrollView>
 
@@ -377,6 +440,10 @@ export default function ParkingDetailScreen() {
           <TouchableOpacity style={styles.reservationButton} onPress={handleReservation}>
             <Ionicons name="calendar" size={20} color="white" />
             <Text style={styles.reservationText}>예약하기</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.paymentButton} onPress={handlePayment}>
+            <Ionicons name="card" size={20} color="white" />
+            <Text style={styles.paymentText}>결제하기</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -650,6 +717,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
+  paymentButton: {
+    flex: 1,
+    backgroundColor: '#FF6B35',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  paymentText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+  },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -669,5 +751,46 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#007AFF',
     fontWeight: '500',
+  },
+  reviewsPreview: {
+    marginTop: 15,
+  },
+  loadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  noReviewsContainer: {
+    padding: 30,
+    alignItems: 'center',
+  },
+  noReviewsText: {
+    fontSize: 16,
+    color: '#999',
+    fontWeight: '500',
+    marginTop: 10,
+  },
+  noReviewsSubtext: {
+    fontSize: 14,
+    color: '#ccc',
+    marginTop: 5,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    backgroundColor: '#f0f7ff',
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  viewAllText: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '500',
+    marginRight: 5,
   },
 }); 
