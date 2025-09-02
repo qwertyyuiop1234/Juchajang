@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Stack } from 'expo-router';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../constants/Styles';
+import { reviewAPI, ReviewRequest } from '../services/reviewAPI';
 
 export default function ReviewScreen() {
   const router = useRouter();
@@ -37,7 +38,7 @@ export default function ReviewScreen() {
     );
   };
 
-  const handleSubmitReview = () => {
+  const handleSubmitReview = async () => {
     if (rating === 0) {
       Alert.alert('평점을 선택해주세요', '별점을 매겨주세요.');
       return;
@@ -48,17 +49,47 @@ export default function ReviewScreen() {
       return;
     }
 
-    // 리뷰 제출 로직 (실제로는 API 호출)
-    Alert.alert(
-      '리뷰 제출',
-      '리뷰가 성공적으로 제출되었습니다!',
-      [
-        {
-          text: '확인',
-          onPress: () => router.back()
-        }
-      ]
-    );
+    try {
+      const userId = 'user123'; // 실제로는 로그인된 사용자 ID
+
+      const reviewData: ReviewRequest = {
+        parkingId: parkingId || '1',
+        parkingName: parkingName || '테스트 주차장',
+        userId,
+        rating,
+        reviewText: reviewText.trim(),
+        categories: selectedCategories
+      };
+
+      // 터미널에 로깅
+      reviewAPI.logReviewRequest(reviewData, '리뷰 작성');
+
+      console.log('📝 API 호출 시작...');
+      const response = await reviewAPI.createReview(reviewData);
+      console.log('📝 API 호출 완료!');
+      
+      console.log('📝 응답 받음:', response.success);
+      console.log('📝 response.message:', response.message);
+
+      if (response.success) {
+        Alert.alert(
+          '리뷰 제출 성공',
+          response.message,
+          [
+            {
+              text: '확인',
+              onPress: () => router.back()
+            }
+          ]
+        );
+      } else {
+        Alert.alert('리뷰 제출 실패', response.message || '리뷰 제출 중 오류가 발생했습니다.');
+      }
+
+    } catch (error) {
+      console.error('리뷰 제출 실패:', error);
+      Alert.alert('리뷰 제출 실패', '리뷰 제출 중 오류가 발생했습니다.');
+    }
   };
 
   const getRatingText = () => {
