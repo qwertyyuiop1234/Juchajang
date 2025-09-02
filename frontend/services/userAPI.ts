@@ -1,18 +1,18 @@
-import { auth } from '../config/firebase';
+import { auth } from "../config/firebase";
 
-const API_BASE_URL = 'https://53fb5fcb1501.ngrok-free.app';
+const API_BASE_URL = "https://f0e9b8cc7106.ngrok-free.app";
 
 // 인증된 요청을 위한 헤더 가져오기
 const getAuthHeaders = async () => {
   const user = auth.currentUser;
   if (!user) {
-    throw new Error('로그인이 필요합니다.');
+    throw new Error("로그인이 필요합니다.");
   }
 
   const token = await user.getIdToken();
   return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
   };
 };
 
@@ -23,17 +23,17 @@ export const getUserProfile = async () => {
     const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
       headers: {
         ...headers,
-        'ngrok-skip-browser-warning': 'true', // ngrok 브라우저 경고 우회
+        "ngrok-skip-browser-warning": "true", // ngrok 브라우저 경고 우회
       },
     });
 
     if (!response.ok) {
-      throw new Error('프로필 조회에 실패했습니다.');
+      throw new Error("프로필 조회에 실패했습니다.");
     }
 
     return await response.json();
   } catch (error) {
-    console.error('프로필 조회 에러:', error);
+    console.error("프로필 조회 에러:", error);
     throw error;
   }
 };
@@ -50,18 +50,18 @@ export const updateUserProfile = async (profileData: {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
-      method: 'PUT',
+      method: "PUT",
       headers,
       body: JSON.stringify(profileData),
     });
 
     if (!response.ok) {
-      throw new Error('프로필 업데이트에 실패했습니다.');
+      throw new Error("프로필 업데이트에 실패했습니다.");
     }
 
     return await response.json();
   } catch (error) {
-    console.error('프로필 업데이트 에러:', error);
+    console.error("프로필 업데이트 에러:", error);
     throw error;
   }
 };
@@ -71,18 +71,18 @@ export const addToFavorites = async (parkingLotId: string) => {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/api/users/favorites`, {
-      method: 'POST',
+      method: "POST",
       headers,
       body: JSON.stringify({ parkingLotId }),
     });
 
     if (!response.ok) {
-      throw new Error('즐겨찾기 추가에 실패했습니다.');
+      throw new Error("즐겨찾기 추가에 실패했습니다.");
     }
 
     return await response.json();
   } catch (error) {
-    console.error('즐겨찾기 추가 에러:', error);
+    console.error("즐겨찾기 추가 에러:", error);
     throw error;
   }
 };
@@ -91,18 +91,21 @@ export const addToFavorites = async (parkingLotId: string) => {
 export const removeFromFavorites = async (parkingLotId: string) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${API_BASE_URL}/api/users/favorites/${parkingLotId}`, {
-      method: 'DELETE',
-      headers,
-    });
+    const response = await fetch(
+      `${API_BASE_URL}/api/users/favorites/${parkingLotId}`,
+      {
+        method: "DELETE",
+        headers,
+      }
+    );
 
     if (!response.ok) {
-      throw new Error('즐겨찾기 제거에 실패했습니다.');
+      throw new Error("즐겨찾기 제거에 실패했습니다.");
     }
 
     return await response.json();
   } catch (error) {
-    console.error('즐겨찾기 제거 에러:', error);
+    console.error("즐겨찾기 제거 에러:", error);
     throw error;
   }
 };
@@ -116,12 +119,12 @@ export const getUserReservations = async () => {
     });
 
     if (!response.ok) {
-      throw new Error('예약 내역 조회에 실패했습니다.');
+      throw new Error("예약 내역 조회에 실패했습니다.");
     }
 
     return await response.json();
   } catch (error) {
-    console.error('예약 내역 조회 에러:', error);
+    console.error("예약 내역 조회 에러:", error);
     throw error;
   }
 };
@@ -131,17 +134,17 @@ export const deleteUserAccount = async () => {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/api/users/account`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers,
     });
 
     if (!response.ok) {
-      throw new Error('계정 삭제에 실패했습니다.');
+      throw new Error("계정 삭제에 실패했습니다.");
     }
 
     return await response.json();
   } catch (error) {
-    console.error('계정 삭제 에러:', error);
+    console.error("계정 삭제 에러:", error);
     throw error;
   }
 };
