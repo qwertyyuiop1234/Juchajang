@@ -7,10 +7,9 @@ import TabBarBackground from '../../components/ui/TabBarBackground';
 import { ProtectedRoute } from '../../components/auth/ProtectedRoute';
 
 export default function TabLayout() {
-
   return (
     <ProtectedRoute>
-      <Tabs
+        <Tabs
         screenOptions={{
         tabBarActiveTintColor: '#007AFF',
         tabBarInactiveTintColor: '#8E8E93',
@@ -52,6 +51,7 @@ export default function TabLayout() {
       }}>
       <Tabs.Screen
         name="index"
+        key="index-tab"
         options={{
           title: '홈',
           tabBarIcon: ({ color, focused }) => (
@@ -65,6 +65,7 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="parking"
+        key="parking-tab"
         options={{
           title: '주차장',
           tabBarIcon: ({ color, focused }) => (
@@ -78,6 +79,7 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="reservation"
+        key="reservation-tab"
         options={{
           title: '예약',
           tabBarIcon: ({ color, focused }) => (
@@ -91,6 +93,7 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="favorites"
+        key="favorites-tab"
         options={{
           title: '즐겨찾기',
           tabBarIcon: ({ color, focused }) => (
@@ -104,6 +107,7 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="settings"
+        key="settings-tab"
         options={{
           title: '설정',
           tabBarIcon: ({ color, focused }) => (
@@ -115,7 +119,7 @@ export default function TabLayout() {
           ),
         }}
       />
-    </Tabs>
+        </Tabs>
     </ProtectedRoute>
   );
 }

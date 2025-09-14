@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useFavorites, ParkingLot } from '../../contexts/FavoritesContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { createReservation, getAvailableTimeSlots } from '../../services/reservationAPI';
+import { getAllPersonalParkingLots } from '../../services/personalParkingAPI';
+import { useUserProfile } from '../../contexts/UserProfileContext';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../../constants/Styles';
 
 export default function ParkingScreen() {
@@ -20,6 +24,12 @@ export default function ParkingScreen() {
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
   const [unavailableTimeSlots, setUnavailableTimeSlots] = useState<string[]>([]);
+  const [isLoadingTimeSlots, setIsLoadingTimeSlots] = useState(false);
+  const [reservationLoading, setReservationLoading] = useState(false);
+  
+  const { user } = useAuth();
+  const { profile } = useUserProfile();
+  const [privateParkingLots, setPrivateParkingLots] = useState<any[]>([]);
 
   const filters = [
     { id: 'all', label: '전체' },
@@ -30,8 +40,27 @@ export default function ParkingScreen() {
     { id: 'available', label: '빈자리' },
   ];
 
-  // 주차장 데이터 (실제로는 API에서 받아올 데이터)
-  const allParkingLots: ParkingLot[] = [
+  // 개인 주차장 데이터 로드 (화면 포커스 시마다)
+  useFocusEffect(
+    React.useCallback(() => {
+      loadPrivateParkingLots();
+    }, [])
+  );
+
+  const loadPrivateParkingLots = async () => {
+    try {
+      console.log('🔄 개인 주차장 목록 로드 시작...');
+      const lots = await getAllPersonalParkingLots();
+      console.log('✅ 개인 주차장 로드 성공:', lots.length, '개');
+      console.log('📍 로드된 개인 주차장:', lots);
+      setPrivateParkingLots(lots);
+    } catch (error) {
+      console.error('❌ 개인 주차장 목록 로드 실패:', error);
+    }
+  };
+
+  // 주차장 데이터 (공영주차장 + 개인주차장)
+  const publicParkingLots: ParkingLot[] = [
     {
       id: 1,
       name: '강남역 지하주차장',
@@ -116,80 +145,57 @@ export default function ParkingScreen() {
       statusColor: Colors.success,
       type: 'public',
     },
-    // 개인 주차공간 추가
-    {
-      id: 7,
-      name: '김씨 개인주차공간',
-      address: '서울시 강남구 역삼동 789-12',
-      distance: '0.3km',
-      time: '3분',
-      rating: 4.8,
-      available: 1,
-      total: 1,
-      price: '5,000원/h',
-      status: '예약가능',
-      statusColor: Colors.success,
-      type: 'private',
-      ownerName: '김철수',
-      contactNumber: '010-1234-5678',
-      description: '안전하고 깨끗한 개인 주차공간입니다.',
-      availableTimeSlots: [
-        {
-          id: 1,
-          dayOfWeek: 1, // 월요일
-          startTime: '09:00',
-          endTime: '18:00',
-          price: 5000,
-          isAvailable: true,
-        },
-        {
-          id: 2,
-          dayOfWeek: 2, // 화요일
-          startTime: '09:00',
-          endTime: '18:00',
-          price: 5000,
-          isAvailable: true,
-        },
-      ],
-      rules: ['흡연 금지', '음식물 반입 금지', '시끄러운 소음 금지'],
-    },
-    {
-      id: 8,
-      name: '박씨 주차공간',
-      address: '서울시 강남구 강남대로 456-78',
-      distance: '0.7km',
-      time: '7분',
-      rating: 4.5,
-      available: 1,
-      total: 1,
-      price: '4,500원/h',
-      status: '예약가능',
-      statusColor: Colors.success,
-      type: 'private',
-      ownerName: '박영희',
-      contactNumber: '010-9876-5432',
-      description: '편리한 위치의 개인 주차공간입니다.',
-      availableTimeSlots: [
-        {
-          id: 3,
-          dayOfWeek: 3, // 수요일
-          startTime: '10:00',
-          endTime: '20:00',
-          price: 4500,
-          isAvailable: true,
-        },
-        {
-          id: 4,
-          dayOfWeek: 4, // 목요일
-          startTime: '10:00',
-          endTime: '20:00',
-          price: 4500,
-          isAvailable: true,
-        },
-      ],
-      rules: ['정시 입차/출차', '주차공간 청결 유지'],
-    },
   ];
+
+  // 개인 주차장 데이터를 ParkingLot 형식으로 변환
+  const convertedPrivateParkingLots: ParkingLot[] = privateParkingLots.map((lot, index) => {
+    // 디버깅: lot.id 확인
+    if (!lot.id && lot.id !== 0) {
+      console.warn('⚠️ lot.id가 정의되지 않음:', lot);
+    }
+    console.log(`🔄 변환 중: ${lot.name} (ID: ${lot.id}, Index: ${index})`);
+    return {
+      id: `private_${lot.id || 'unknown'}_${index}`, // 고유한 ID를 위해 접두어와 인덱스 추가
+    name: lot.name,
+    address: lot.address,
+    distance: '계산 중...', // TODO: 거리 계산 로직 추가
+    time: '계산 중...', // TODO: 시간 계산 로직 추가
+    rating: lot.rating || 0,
+    available: lot.status === 'available' ? 1 : 0,
+    total: 1,
+    price: `${lot.pricePerHour?.toLocaleString() || '5,000'}원/h`,
+    status: lot.status === 'available' ? '예약가능' : '사용중',
+    statusColor: lot.status === 'available' ? Colors.success : Colors.error,
+    type: 'private',
+    ownerName: lot.ownerName || '익명',
+    contactNumber: lot.ownerContact,
+    description: lot.description || '',
+    availableTimeSlots: [
+      {
+        id: 1,
+        dayOfWeek: 1,
+        startTime: lot.availableStartTime || '09:00',
+        endTime: lot.availableEndTime || '18:00',
+        price: lot.pricePerHour || 5000,
+        isAvailable: lot.status === 'available',
+      },
+    ],
+    rules: lot.rules || [],
+    };
+  });
+
+  // 전체 주차장 목록 (공영 + 개인)
+  const allParkingLots: ParkingLot[] = [
+    ...publicParkingLots,
+    ...convertedPrivateParkingLots,
+  ];
+  
+  // 디버깅: 전체 주차장 목록 로그
+  React.useEffect(() => {
+    console.log('📊 전체 주차장 목록:', allParkingLots.length, '개');
+    console.log('  - 공영주차장:', publicParkingLots.length, '개');
+    console.log('  - 개인주차장:', convertedPrivateParkingLots.length, '개');
+  }, [allParkingLots.length]);
 
   // 필터링된 주차장 목록
   const getFilteredParkingLots = () => {
@@ -228,6 +234,16 @@ export default function ParkingScreen() {
   };
 
   const parkingLots = getFilteredParkingLots();
+  
+  // 디버깅: ID 중복 확인
+  React.useEffect(() => {
+    const ids = parkingLots.map(lot => lot.id);
+    const uniqueIds = new Set(ids);
+    if (ids.length !== uniqueIds.size) {
+      console.error('중복된 주차장 ID 발견:', ids);
+      console.error('중복된 ID들:', ids.filter((id, index) => ids.indexOf(id) !== index));
+    }
+  }, [parkingLots]);
 
   const handleFavoriteToggle = (parkingLot: ParkingLot) => {
     if (isFavorite(parkingLot.id)) {
@@ -237,7 +253,7 @@ export default function ParkingScreen() {
     }
   };
 
-  const navigateToDetail = (id: number) => {
+  const navigateToDetail = (id: number | string) => {
     router.push(`/parking-detail?id=${id}` as any);
   };
 
@@ -256,27 +272,56 @@ export default function ParkingScreen() {
     }
     setAvailableDates(availableDates);
     
-    // 기본 시간대 생성 (9시부터 18시까지)
-    const timeSlots = [];
-    for (let hour = 9; hour <= 18; hour++) {
-      timeSlots.push(`${hour.toString().padStart(2, '0')}:00`);
-    }
-    setAvailableTimeSlots(timeSlots);
-    
-    // 예약 불가능한 시간대 (예시: 12시-13시, 15시-16시)
-    const unavailable = ['12:00', '15:00'];
-    setUnavailableTimeSlots(unavailable);
-    
-    setSelectedDate(availableDates[0]);
+    const firstDate = availableDates[0];
+    setSelectedDate(firstDate);
     setSelectedTimeSlots([]);
     setDuration(0);
     
+    // 첫 번째 날짜의 예약 가능 시간대 로드
+    const actualId = parkingLot.id.toString().startsWith('private_') 
+      ? parkingLot.id.toString().replace(/^private_(\d+)_\d+$/, '$1')
+      : parkingLot.id.toString();
+    loadAvailableTimeSlots(actualId, firstDate);
+    
     setShowReservationModal(true);
   };
+  
+  // 예약 가능 시간대 로드 함수
+  const loadAvailableTimeSlots = async (parkingLotId: string, date: string) => {
+    try {
+      setIsLoadingTimeSlots(true);
+      const timeSlotData = await getAvailableTimeSlots(parkingLotId, date);
+      
+      // 기본 시간대 생성 (9시부터 18시까지)
+      const allTimeSlots = [];
+      for (let hour = 9; hour <= 18; hour++) {
+        allTimeSlots.push(`${hour.toString().padStart(2, '0')}:00`);
+      }
+      
+      setAvailableTimeSlots(allTimeSlots);
+      setUnavailableTimeSlots(timeSlotData.reserved || []);
+    } catch (error) {
+      console.error('시간대 로드 실패:', error);
+      // 에러 발생 시 기본 시간대만 표시
+      const timeSlots = [];
+      for (let hour = 9; hour <= 18; hour++) {
+        timeSlots.push(`${hour.toString().padStart(2, '0')}:00`);
+      }
+      setAvailableTimeSlots(timeSlots);
+      setUnavailableTimeSlots([]);
+    } finally {
+      setIsLoadingTimeSlots(false);
+    }
+  };
 
-  const handleReservationConfirm = () => {
+  const handleReservationConfirm = async () => {
     if (!selectedParkingLot) {
       Alert.alert('오류', '주차장 정보가 없습니다.');
+      return;
+    }
+
+    if (!user) {
+      Alert.alert('로그인 필요', '예약하려면 로그인이 필요합니다.');
       return;
     }
 
@@ -290,7 +335,8 @@ export default function ParkingScreen() {
       return;
     }
 
-    const totalPrice = duration * (selectedParkingLot.availableTimeSlots?.[0]?.price || 5000);
+    const pricePerHour = selectedParkingLot.availableTimeSlots?.[0]?.price || 5000;
+    const totalPrice = duration * pricePerHour;
     const startTime = selectedTimeSlots[0];
     const endTime = getEndTime();
     
@@ -304,41 +350,87 @@ export default function ParkingScreen() {
         },
         {
           text: '예약하기',
-          onPress: () => {
-            // 예약 완료 처리
-            Alert.alert(
-              '예약 완료',
-              '예약이 성공적으로 완료되었습니다!',
-              [
-                {
-                  text: '확인',
-                  onPress: () => {
-                    setShowReservationModal(false);
-                    setSelectedParkingLot(null);
-                    setSelectedDate('');
-                    setSelectedTimeSlots([]);
-                    setDuration(0);
-                    setAvailableDates([]);
-                    setAvailableTimeSlots([]);
-                    setUnavailableTimeSlots([]);
-                    // 예약 내역 페이지로 이동
-                    router.push('/reservation' as any);
-                  },
-                },
-              ]
-            );
-          },
+          onPress: () => confirmReservation(),
         },
       ]
     );
   };
-
-  const calculateDuration = (start: string, end: string) => {
-    const startHour = parseInt(start.split(':')[0]);
-    const endHour = parseInt(end.split(':')[0]);
-    const calculated = endHour - startHour;
-    setDuration(calculated > 0 ? calculated : 1);
+  
+  const confirmReservation = async () => {
+    if (!selectedParkingLot || !user) return;
+    
+    try {
+      setReservationLoading(true);
+      
+      const pricePerHour = selectedParkingLot.availableTimeSlots?.[0]?.price || 5000;
+      const totalPrice = duration * pricePerHour;
+      const startTime = selectedTimeSlots[0];
+      const endTime = getEndTime();
+      
+      // 현재 사용자 정보 활용
+      // private_ 접두어가 있으면 제거하여 실제 ID 사용
+      const actualParkingLotId = selectedParkingLot.id.toString().startsWith('private_') 
+        ? selectedParkingLot.id.toString().replace(/^private_(\d+)_\d+$/, '$1')
+        : selectedParkingLot.id.toString();
+        
+      const reservationData = {
+        parkingLotId: actualParkingLotId,
+        parkingLotName: selectedParkingLot.name,
+        parkingLotAddress: selectedParkingLot.address,
+        ownerName: selectedParkingLot.ownerName,
+        ownerContact: selectedParkingLot.contactNumber,
+        reservationDate: selectedDate,
+        timeSlots: selectedTimeSlots,
+        startTime,
+        endTime,
+        duration,
+        totalPrice,
+        pricePerHour,
+        paymentMethod: 'card',
+        // 사용자 정보 추가
+        userDisplayName: profile?.displayName || user?.displayName || '익명',
+        userEmail: user?.email || '',
+        userPhone: profile?.phoneNumber || '',
+      };
+      
+      await createReservation(reservationData);
+      
+      Alert.alert(
+        '예약 완료',
+        '예약이 성공적으로 완료되었습니다!',
+        [
+          {
+            text: '확인',
+            onPress: () => {
+              setShowReservationModal(false);
+              resetReservationModal();
+              // 예약 내역 페이지로 이동
+              router.push('/reservation' as any);
+            },
+          },
+        ]
+      );
+    } catch (error: any) {
+      console.error('예약 생성 실패:', error);
+      Alert.alert(
+        '예약 실패',
+        error.message || '예약 중 오류가 발생했습니다. 다시 시도해주세요.'
+      );
+    } finally {
+      setReservationLoading(false);
+    }
   };
+  
+  const resetReservationModal = () => {
+    setSelectedParkingLot(null);
+    setSelectedDate('');
+    setSelectedTimeSlots([]);
+    setDuration(0);
+    setAvailableDates([]);
+    setAvailableTimeSlots([]);
+    setUnavailableTimeSlots([]);
+  };
+
 
   const timeToMinutes = (time: string): number => {
     const [hours, minutes] = time.split(':').map(Number);
@@ -373,6 +465,20 @@ export default function ParkingScreen() {
 
     setSelectedTimeSlots(newSelectedSlots);
     setDuration(newSelectedSlots.length);
+  };
+  
+  // 날짜 변경 시 예약 상황 새로고침
+  const handleDateChange = (date: string) => {
+    setSelectedDate(date);
+    setSelectedTimeSlots([]); // 선택된 시간 초기화
+    setDuration(0);
+    
+    if (selectedParkingLot) {
+      const actualId = selectedParkingLot.id.toString().startsWith('private_') 
+        ? selectedParkingLot.id.toString().replace(/^private_(\d+)_\d+$/, '$1')
+        : selectedParkingLot.id.toString();
+      loadAvailableTimeSlots(actualId, date);
+    }
   };
 
   const isTimeSlotSelected = (time: string) => {
@@ -426,9 +532,18 @@ export default function ParkingScreen() {
       {/* 헤더 */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>주차장 찾기</Text>
-        <TouchableOpacity style={styles.filterButton}>
-          <Ionicons name="options-outline" size={24} color={Colors.textPrimary} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity 
+            style={styles.shareButton}
+            onPress={() => router.push('/add-parking')}
+          >
+            <Ionicons name="add-circle-outline" size={20} color={Colors.primary} />
+            <Text style={styles.shareButtonText}>공간 공유</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.filterButton}>
+            <Ionicons name="options-outline" size={24} color={Colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* 검색바 */}
@@ -625,7 +740,7 @@ export default function ParkingScreen() {
                                  styles.dateButton,
                                  selectedDate === date && styles.dateButtonSelected
                                ]}
-                               onPress={() => setSelectedDate(date)}
+                               onPress={() => handleDateChange(date)}
                              >
                                <Text style={[
                                  styles.dateButtonText,
@@ -656,7 +771,8 @@ export default function ParkingScreen() {
                            )}
                          </Text>
                          <Text style={styles.timeSlotInstruction}>
-                           {selectedTimeSlots.length === 0 ? 
+                           {isLoadingTimeSlots ? '예약 상황을 로드 중입니다...' :
+                            selectedTimeSlots.length === 0 ? 
                              '원하는 시간대를 클릭하여 선택하세요' : 
                              `${selectedTimeSlots.length}시간 선택됨 · 추가 시간대를 클릭하거나 선택 해제할 수 있습니다`
                            }
@@ -723,16 +839,16 @@ export default function ParkingScreen() {
                                <TouchableOpacity
                   style={[
                     styles.confirmReservationButton,
-                    selectedTimeSlots.length === 0 && styles.confirmReservationButtonDisabled
+                    (selectedTimeSlots.length === 0 || reservationLoading) && styles.confirmReservationButtonDisabled
                   ]}
                   onPress={handleReservationConfirm}
-                  disabled={selectedTimeSlots.length === 0}
+                  disabled={selectedTimeSlots.length === 0 || reservationLoading}
                 >
                   <Text style={[
                     styles.confirmReservationText,
-                    selectedTimeSlots.length === 0 && styles.confirmReservationTextDisabled
+                    (selectedTimeSlots.length === 0 || reservationLoading) && styles.confirmReservationTextDisabled
                   ]}>
-                    예약하기
+                    {reservationLoading ? '예약 중...' : '예약하기'}
                   </Text>
                 </TouchableOpacity>
              </View>
@@ -759,6 +875,25 @@ const styles = StyleSheet.create({
     fontSize: Typography.xl,
     fontWeight: '600',
     color: Colors.textPrimary,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primaryLight || '#E8F4F8',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    marginRight: Spacing.sm,
+  },
+  shareButtonText: {
+    fontSize: Typography.xs,
+    fontWeight: '600',
+    color: Colors.primary,
+    marginLeft: Spacing.xs,
   },
   filterButton: {
     padding: Spacing.sm,

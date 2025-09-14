@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Switch, Alert } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Switch, Alert, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../../constants/Styles';
 import { useAuth } from '../../contexts/AuthContext';
+import { useUserProfile } from '../../contexts/UserProfileContext';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { profile, updateProfile } = useUserProfile();
   const [notifications, setNotifications] = useState(true);
   const [locationServices, setLocationServices] = useState(true);
   const [autoLogin, setAutoLogin] = useState(false);
@@ -22,6 +24,12 @@ export default function SettingsScreen() {
           text: '프로필 설정', 
           icon: 'person-outline',
           onPress: () => router.push('/profile-detail' as any),
+          showArrow: true,
+        },
+        { 
+          text: '연락처 등록', 
+          icon: 'call-outline',
+          onPress: () => handlePhoneNumberEdit(),
           showArrow: true,
         },
         { 
@@ -40,6 +48,24 @@ export default function SettingsScreen() {
           text: '개인정보 관리', 
           icon: 'lock-closed-outline',
           onPress: () => Alert.alert('개인정보 관리', '개인정보 관리 기능은 곧 구현될 예정입니다.'),
+          showArrow: true,
+        },
+      ],
+    },
+    {
+      id: 'parking',
+      title: '주차공간 관리',
+      items: [
+        { 
+          text: '내 주차공간', 
+          icon: 'car-outline',
+          onPress: () => router.push('/my-parking' as any),
+          showArrow: true,
+        },
+        { 
+          text: '새 주차공간 등록', 
+          icon: 'add-circle-outline',
+          onPress: () => router.push('/add-parking' as any),
           showArrow: true,
         },
       ],
@@ -64,24 +90,6 @@ export default function SettingsScreen() {
           text: '자동 결제 설정', 
           icon: 'refresh-outline',
           onPress: () => Alert.alert('자동 결제 설정', '자동 결제 설정 기능은 곧 구현될 예정입니다.'),
-          showArrow: true,
-        },
-      ],
-    },
-    {
-      id: 'parking',
-      title: '주차공간 관리',
-      items: [
-        { 
-          text: '개인 주차공간 등록', 
-          icon: 'add-circle-outline',
-          onPress: () => router.push('/register' as any),
-          showArrow: true,
-        },
-        { 
-          text: '등록한 주차공간 관리', 
-          icon: 'car-outline',
-          onPress: () => Alert.alert('주차공간 관리', '등록한 주차공간 관리 기능은 곧 구현될 예정입니다.'),
           showArrow: true,
         },
       ],
@@ -176,6 +184,50 @@ export default function SettingsScreen() {
     );
   };
 
+  const handlePhoneNumberEdit = () => {
+    const currentPhone = profile?.phoneNumber || '';
+    
+    Alert.prompt(
+      '연락처 등록',
+      '개인 주차공간을 공유하려면 연락처가 필요합니다.\n연락처를 입력해주세요.\n(숫자만 입력하시면 자동으로 하이픈이 추가됩니다)',
+      [
+        {
+          text: '취소',
+          style: 'cancel',
+        },
+        {
+          text: '저장',
+          onPress: async (phoneNumber) => {
+            if (!phoneNumber?.trim()) {
+              Alert.alert('오류', '연락처를 입력해주세요.');
+              return;
+            }
+            
+            // 숫자만 추출하여 검증
+            const numbers = phoneNumber.replace(/[^\d]/g, '');
+            if (numbers.length !== 11 || !numbers.startsWith('010')) {
+              Alert.alert('오류', '올바른 전화번호를 입력해주세요. (010으로 시작하는 11자리)');
+              return;
+            }
+            
+            // 포맷팅된 전화번호로 저장
+            const formattedPhone = `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7)}`;
+            
+            try {
+              await updateProfile({ phoneNumber: formattedPhone });
+              Alert.alert('완료', '연락처가 성공적으로 등록되었습니다.');
+            } catch (error: any) {
+              Alert.alert('오류', error.message || '연락처 등록 중 오류가 발생했습니다.');
+            }
+          },
+        },
+      ],
+      'plain-text',
+      currentPhone,
+      'number-pad'
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* 헤더 */}
@@ -198,6 +250,9 @@ export default function SettingsScreen() {
                 {user.displayName || '사용자'}
               </Text>
               <Text style={styles.userEmail}>{user.email}</Text>
+              <Text style={styles.userPhone}>
+                {profile?.phoneNumber ? `📞 ${profile.phoneNumber}` : '📞 연락처 미등록'}
+              </Text>
               <Text style={styles.userStatus}>일반 회원</Text>
             </View>
             <TouchableOpacity style={styles.editButton}>
@@ -376,6 +431,11 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   userEmail: {
+    fontSize: Typography.sm,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.xs,
+  },
+  userPhone: {
     fontSize: Typography.sm,
     color: Colors.textSecondary,
     marginBottom: Spacing.xs,

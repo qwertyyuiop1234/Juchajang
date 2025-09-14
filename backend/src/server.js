@@ -6,6 +6,8 @@ import parkingRoutes from "./routes/parking.js";
 import reviewRoutes from "./routes/review.js";
 import paymentRoutes from "./routes/payment.js";
 import usersRoutes from "./routes/users.js";
+import reservationRoutes from "./routes/reservations.js";
+import privateParkingRoutes from "./routes/privateParking.js";
 
 const PORT = ENV.PORT;
 const app = express();
@@ -23,6 +25,8 @@ app.use("/api/parking", parkingRoutes);
 app.use("/api/review", reviewRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/users", usersRoutes);
+app.use("/api/reservations", reservationRoutes);
+app.use("/api/personal-parking", privateParkingRoutes);
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log("Express server running on PORT : ", PORT);
