@@ -1,7 +1,7 @@
 // 리뷰 API 서비스
 
 // ngrok 터널 URL 사용 (실제 연결)
-const API_BASE_URL = "https://2d0a36f94585.ngrok-free.app/api";
+const API_BASE_URL = "https://02c7ce9fa570.ngrok-free.app/api";
 
 // 로컬 IP 사용 시 (ngrok 대신)
 // const API_BASE_URL = 'http://192.168.219.113:5001/api';

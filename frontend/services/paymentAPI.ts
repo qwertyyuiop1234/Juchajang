@@ -1,7 +1,7 @@
 // 토스페이먼츠 결제 API 서비스
 
 // API URL 자동 감지 (ngrok 우선, 실패 시 로컬 IP)
-const NGROK_URL = "https://2d0a36f94585.ngrok-free.app/api";
+const NGROK_URL = "https://02c7ce9fa570.ngrok-free.app/api";
 const LOCAL_URL = "http://192.168.219.113:5001/api";
 
 // ngrok이 작동하는지 확인하고 URL 결정

@@ -10,7 +10,7 @@ const getApiBaseUrl = () => {
       console.log(
         "📱 iOS 환경 - 핫스팟 Client Isolation 문제로 인해 터널 URL 강제 사용"
       );
-      const tunnelUrl = "https://2d0a36f94585.ngrok-free.app/api";
+      const tunnelUrl = "https://02c7ce9fa570.ngrok-free.app/api";
       console.log("🚇 백엔드 터널 URL 사용:", tunnelUrl);
       return tunnelUrl;
     }
