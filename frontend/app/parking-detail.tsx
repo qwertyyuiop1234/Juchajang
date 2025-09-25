@@ -133,10 +133,6 @@ export default function ParkingDetailScreen() {
     router.push('/(tabs)/reservation' as any);
   };
 
-  const handlePayment = () => {
-    // 결제 페이지로 이동
-    router.push(`/payment?parkingId=${parkingInfo.id}&parkingName=${encodeURIComponent(parkingInfo.name)}` as any);
-  };
 
   const loadReviews = async () => {
     try {
@@ -411,7 +407,7 @@ export default function ParkingDetailScreen() {
           <View style={styles.infoSection}>
             <Text style={styles.sectionTitle}>편의시설</Text>
             <View style={styles.featuresList}>
-              {parkingInfo.features?.map((feature, index) => (
+              {parkingInfo.features?.map((feature: string, index: number) => (
                 <View key={index} style={styles.featureItem}>
                   <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
                   <Text style={styles.featureText}>{feature}</Text>
@@ -472,9 +468,8 @@ export default function ParkingDetailScreen() {
               </View>
             ) : reviews.length > 0 ? (
               <View style={styles.reviewsPreview}>
-                {reviews.map((review) => (
+                {reviews.map((review: any) => (
                   <ReviewCard
-                    key={review.id}
                     review={review}
                     onPress={() => handleViewAllReviews()}
                   />
@@ -505,10 +500,6 @@ export default function ParkingDetailScreen() {
           <TouchableOpacity style={styles.reservationButton} onPress={handleReservation}>
             <Ionicons name="calendar" size={20} color="white" />
             <Text style={styles.reservationText}>예약하기</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.paymentButton} onPress={handlePayment}>
-            <Ionicons name="card" size={20} color="white" />
-            <Text style={styles.paymentText}>결제하기</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -778,21 +769,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   reservationText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  paymentButton: {
-    flex: 1,
-    backgroundColor: '#FF6B35',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  paymentText: {
     color: 'white',
     fontSize: 14,
     fontWeight: '500',

@@ -1,8 +1,7 @@
 // 리뷰 API 서비스
 
 // API URL 자동 감지 (ngrok 우선, 실패 시 로컬 IP)
-const NGROK_URL = 'https://10e981896508.ngrok-free.app/api';
-const LOCAL_URL = 'http://192.168.219.113:5001/api';
+const NGROK_URL = 'https://477995459e77.ngrok-free.app/api';
 
 // ngrok이 작동하는지 확인하고 URL 결정
 const API_BASE_URL = NGROK_URL; // 우선 ngrok 시도

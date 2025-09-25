@@ -1,6 +1,6 @@
 import { auth } from "../config/firebase";
 
-const API_BASE_URL = "https://02c7ce9fa570.ngrok-free.app";
+const API_BASE_URL = "https://477995459e77.ngrok-free.app";
 
 // 인증된 요청을 위한 헤더 가져오기
 const getAuthHeaders = async () => {

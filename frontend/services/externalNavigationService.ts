@@ -1,4 +1,4 @@
-import { Linking, Platform, Alert } from 'react-native';
+import { Linking, Alert } from 'react-native';
 
 export interface NavigationAppOptions {
   name: string;

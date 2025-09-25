@@ -1,9 +1,8 @@
-import { NativeModules, Platform } from "react-native";
 
 // 단순화된 API URL 설정 (ngrok 터널만 사용)
 const getApiBaseUrl = () => {
   // 개발/프로덕션 상관없이 ngrok 터널 사용
-  const ngrokUrl = "https://10e981896508.ngrok-free.app/api";
+  const ngrokUrl = "https://477995459e77.ngrok-free.app/api";
   console.log("🚇 ngrok 터널 URL 강제 사용:", ngrokUrl);
   return ngrokUrl;
 };
