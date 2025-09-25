@@ -1,16 +1,19 @@
 import { Tabs } from 'expo-router';
+import React from 'react';
 import { Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { HapticTab } from '../../components/HapticTab';
 import TabBarBackground from '../../components/ui/TabBarBackground';
-import { ProtectedRoute } from '../../components/auth/ProtectedRoute';
+import { Colors } from '../../constants/Colors';
+import { useColorScheme } from '../../hooks/useColorScheme';
 
 export default function TabLayout() {
+  const colorScheme = useColorScheme();
+
   return (
-    <ProtectedRoute>
-        <Tabs
-        screenOptions={{
+    <Tabs
+      screenOptions={{
         tabBarActiveTintColor: '#007AFF',
         tabBarInactiveTintColor: '#8E8E93',
         headerShown: false,
@@ -51,7 +54,6 @@ export default function TabLayout() {
       }}>
       <Tabs.Screen
         name="index"
-        key="index-tab"
         options={{
           title: '홈',
           tabBarIcon: ({ color, focused }) => (
@@ -65,7 +67,6 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="parking"
-        key="parking-tab"
         options={{
           title: '주차장',
           tabBarIcon: ({ color, focused }) => (
@@ -79,7 +80,6 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="reservation"
-        key="reservation-tab"
         options={{
           title: '예약',
           tabBarIcon: ({ color, focused }) => (
@@ -93,7 +93,6 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="favorites"
-        key="favorites-tab"
         options={{
           title: '즐겨찾기',
           tabBarIcon: ({ color, focused }) => (
@@ -107,7 +106,6 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="settings"
-        key="settings-tab"
         options={{
           title: '설정',
           tabBarIcon: ({ color, focused }) => (
@@ -119,7 +117,6 @@ export default function TabLayout() {
           ),
         }}
       />
-        </Tabs>
-    </ProtectedRoute>
+    </Tabs>
   );
 }

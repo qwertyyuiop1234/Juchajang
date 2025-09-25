@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface ParkingLot {
-  id: number | string;
+  id: number;
   name: string;
   address: string;
   distance: string;
@@ -51,8 +51,8 @@ export interface Reservation {
 interface FavoritesContextType {
   favorites: ParkingLot[];
   addFavorite: (parkingLot: ParkingLot) => void;
-  removeFavorite: (id: number | string) => void;
-  isFavorite: (id: number | string) => boolean;
+  removeFavorite: (id: number) => void;
+  isFavorite: (id: number) => boolean;
   isLoading: boolean;
 }
 
@@ -115,7 +115,7 @@ export const FavoritesProvider: React.FC<FavoritesProviderProps> = ({ children }
     });
   };
 
-  const removeFavorite = (id: number | string) => {
+  const removeFavorite = (id: number) => {
     setFavorites(prev => {
       const newFavorites = prev.filter(fav => fav.id !== id);
       saveFavorites(newFavorites);
@@ -123,7 +123,7 @@ export const FavoritesProvider: React.FC<FavoritesProviderProps> = ({ children }
     });
   };
 
-  const isFavorite = (id: number | string) => {
+  const isFavorite = (id: number) => {
     return favorites.some(fav => fav.id === id);
   };
 

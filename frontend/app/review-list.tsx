@@ -65,6 +65,49 @@ export default function ReviewListScreen() {
     ));
   };
 
+  const renderRatingBreakdown = () => {
+    if (!stats) return null;
+    const dist = stats.ratingDistribution || {} as Record<number, number>;
+    const total = stats.totalReviews || 0;
+    const getPercent = (count: number) => (total > 0 ? Math.round((count / total) * 100) : 0);
+
+    return (
+      <View style={styles.breakdownContainer}>
+        <View style={styles.breakdownHeaderRow}>
+          <Text style={styles.breakdownHeaderText}>별점 분포</Text>
+          {filterRating !== null && (
+            <TouchableOpacity onPress={() => setFilterRating(null)}>
+              <Text style={styles.breakdownClearText}>전체 보기</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        {[5,4,3,2,1].map((star) => {
+          const count = dist[star] || 0;
+          const percent = getPercent(count);
+          const active = filterRating === star;
+          return (
+            <TouchableOpacity
+              key={star}
+              activeOpacity={0.8}
+              onPress={() => setFilterRating(active ? null : star)}
+            >
+              <View style={[styles.breakdownRow, active && styles.breakdownRowActive]}>
+                <View style={styles.breakdownLeft}>
+                  <Ionicons name="star" size={14} color="#FFD700" />
+                  <Text style={[styles.breakdownStarText, active && styles.breakdownStarTextActive]}>{star}</Text>
+                </View>
+                <View style={styles.breakdownBarTrack}>
+                  <View style={[styles.breakdownBarFill, { width: `${percent}%` }, active && styles.breakdownBarFillActive]} />
+                </View>
+                <Text style={[styles.breakdownCountText, active && styles.breakdownCountTextActive]}>{count}명</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
+  };
+
   const renderRatingFilter = () => {
     return (
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterContainer}>
@@ -133,12 +176,12 @@ export default function ReviewListScreen() {
                 <Text style={styles.averageRatingText}>{stats.averageRating}</Text>
                 <Text style={styles.totalReviewsText}>({stats.totalReviews}개 리뷰)</Text>
               </View>
+              {renderRatingBreakdown()}
             </View>
           )}
         </View>
 
-        {/* 필터 */}
-        {renderRatingFilter()}
+        {/* 별점 분포가 필터 역할을 하므로 별도 필터는 제거 */}
 
         {/* 리뷰 목록 */}
         <ScrollView
@@ -224,6 +267,81 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     alignItems: 'center',
+  },
+  breakdownHeaderRow: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  },
+  breakdownHeaderText: {
+    fontSize: Typography.base,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+  breakdownClearText: {
+    fontSize: Typography.sm,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  breakdownContainer: {
+    width: '100%',
+    marginTop: Spacing.sm,
+    gap: 6,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  breakdownRowActive: {
+    backgroundColor: Colors.gray50,
+    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+  },
+  breakdownLeft: {
+    width: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    justifyContent: 'flex-end',
+  },
+  breakdownStarText: {
+    fontSize: Typography.sm,
+    color: Colors.textSecondary,
+    width: 12,
+    textAlign: 'center',
+  },
+  breakdownStarTextActive: {
+    color: Colors.textPrimary,
+    fontWeight: '700',
+  },
+  breakdownBarTrack: {
+    flex: 1,
+    height: 8,
+    backgroundColor: Colors.gray100,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  breakdownBarFill: {
+    height: '100%',
+    backgroundColor: Colors.primary,
+    borderRadius: 999,
+  },
+  breakdownBarFillActive: {
+    backgroundColor: Colors.success,
+  },
+  breakdownCountText: {
+    width: 48,
+    textAlign: 'right',
+    fontSize: Typography.sm,
+    color: Colors.textSecondary,
+  },
+  breakdownCountTextActive: {
+    color: Colors.textPrimary,
+    fontWeight: '700',
   },
   averageRating: {
     flexDirection: 'row',

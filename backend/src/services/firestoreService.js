@@ -10,6 +10,7 @@ export class FirestoreService {
     this.collections = {
       PARKING_LOTS: "parking_lots",
       PARKING_STATUS: "parking_status",
+      CLICK_REVIEW: "click_reveiw",
     };
   }
 
@@ -69,6 +70,28 @@ export class FirestoreService {
     } catch (error) {
       console.error("주차장 상태 저장 실패:", error);
       throw new Error(`주차장 상태 저장 실패: ${error.message}`);
+    }
+  }
+
+  /**
+   * 사용자 클릭 기반 혼잡도 제보 저장
+   * 컬렉션: click_reveiw
+   */
+  async saveClickReview(clickData) {
+    try {
+      const docRef = db.collection(this.collections.CLICK_REVIEW).doc();
+      const data = {
+        parking_code: clickData.parking_code,
+        status_name: clickData.status_name, // '여유' | '보통' | '혼잡'
+        user_id: clickData.user_id || null,
+        source: clickData.source || 'user_report',
+        created_at: FieldValue.serverTimestamp(),
+      };
+      await docRef.set(data);
+      return { success: true, id: docRef.id };
+    } catch (error) {
+      console.error('클릭 리뷰 저장 실패:', error);
+      throw new Error(`클릭 리뷰 저장 실패: ${error.message}`);
     }
   }
 
@@ -150,18 +173,42 @@ export class FirestoreService {
   async getAllLatestParkingStatus() {
     try {
       const parkingLots = await this.getAllParkingLots();
+      console.log(`🔍 parking_lots 컬렉션에서 가져온 주차장 수: ${parkingLots.length}`);
+      
+      // 화양동 주차장 확인
+      const hwayangLot = parkingLots.find(lot => lot.addr && lot.addr.includes('화양동'));
+      if (hwayangLot) {
+        console.log('🎯 parking_lots에서 화양동 주차장 발견:', {
+          parking_code: hwayangLot.parking_code,
+          parking_name: hwayangLot.parking_name,
+          addr: hwayangLot.addr
+        });
+      }
+
       const latestStatuses = [];
 
       for (const lot of parkingLots) {
         const status = await this.getLatestParkingStatus(lot.parking_code);
         if (status) {
+          // parking_name은 parking_lots의 값을 우선 사용 (덮어쓰기 방지)
+          const { parking_name: statusName, ...statusData } = status;
           latestStatuses.push({
             ...lot,
-            ...status,
+            ...statusData,
+            parking_name: lot.parking_name || statusName || '', // lot 우선, status 폴백
+          });
+        } else {
+          // 상태 정보가 없는 주차장도 기본 정보로 포함
+          latestStatuses.push({
+            ...lot,
+            parking_status_name: '정보없음',
+            capacity: 0,
+            cur_parking: 0
           });
         }
       }
 
+      console.log(`🔍 최종 결합된 주차장 수: ${latestStatuses.length}`);
       return latestStatuses;
     } catch (error) {
       console.error("전체 주차장 상태 조회 실패:", error);

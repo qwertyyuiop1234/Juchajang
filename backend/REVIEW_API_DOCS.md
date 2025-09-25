@@ -21,7 +21,7 @@ http://localhost:3000/api/review
   "userId": "user123", // 선택사항
   "rating": 5,
   "reviewText": "매우 좋은 주차장입니다. 깨끗하고 안전합니다.",
-  "categories": ["cleanliness", "safety", "accessibility"]
+  "categories": ["price_cheap", "space_wide", "safety_good"]
 }
 ```
 
@@ -61,7 +61,7 @@ GET /api/review/parking/123?limit=10&offset=0
       "user_id": "user123",
       "rating": 5,
       "review_text": "매우 좋은 주차장입니다.",
-      "categories": ["cleanliness", "safety"],
+      "categories": ["price_cheap", "safety_good"],
       "created_at": "2024-01-15T10:30:00Z",
       "updated_at": "2024-01-15T10:30:00Z"
     }
@@ -90,9 +90,11 @@ GET /api/review/parking/123/stats
     "totalReviews": 15,
     "averageRating": 4.2,
     "categoryStats": {
-      "cleanliness": 12,
-      "safety": 8,
-      "accessibility": 5
+      "price_cheap": 12,
+      "space_wide": 8,
+      "safety_good": 5,
+      "price_expensive": 2,
+      "space_narrow": 1
     },
     "ratingDistribution": {
       "1": 0,
@@ -125,7 +127,7 @@ GET /api/review/user/user123?limit=5&offset=0
 {
   "rating": 4,
   "reviewText": "수정된 리뷰 내용입니다.",
-  "categories": ["cleanliness", "price"]
+  "categories": ["price_cheap", "convenience_good"]
 }
 ```
 
@@ -183,6 +185,27 @@ DELETE /api/review/review_id_here
 
 ## 카테고리 목록
 리뷰 작성 시 사용할 수 있는 카테고리들:
+
+### 긍정적 카테고리 (좋았던 점)
+- `price_cheap`: 💵 요금이 저렴해요
+- `space_wide`: 🚗 주차 공간이 넓어요
+- `congestion_low`: ✅ 자리가 넉넉해요
+- `accessibility_good`: 🚶‍♀️ 목적지와 가까워요
+- `safety_good`: ✨ 밝고 안전해요
+- `convenience_good`: 🅿️ 입/출차가 편해요
+- `ev_charging`: 🔌 전기차 충전 가능해요
+- `facilities_good`: 👩‍🦽 편의시설이 잘 돼있어요
+
+### 부정적 카테고리 (아쉬웠던 점)
+- `price_expensive`: 💰 요금이 비싸요
+- `space_narrow`: 🚗 주차 공간이 좁아요
+- `congestion_high`: 🈵 자리가 항상 부족해요
+- `accessibility_bad`: 🗺️ 찾아가기 어려워요
+- `safety_bad`: 🌙 어둡고 무서워요
+- `convenience_bad`: 🚧 입/출차가 불편해요
+- `maintenance_bad`: 🧹 시설이 낡았어요
+
+### 기존 카테고리 (하위 호환성)
 - `cleanliness`: 청결도
 - `safety`: 안전성
 - `accessibility`: 접근성
@@ -220,6 +243,6 @@ curl -X POST http://localhost:3000/api/review \
     "parkingName": "테스트 주차장",
     "rating": 5,
     "reviewText": "테스트 리뷰입니다. 매우 좋은 주차장이에요!",
-    "categories": ["cleanliness", "safety"]
+    "categories": ["price_cheap", "safety_good"]
   }'
 ```

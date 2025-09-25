@@ -6,7 +6,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Stack } from 'expo-router';
 import { useFavorites, ParkingLot } from '../contexts/FavoritesContext';
 import { externalNavigationService } from '../services/externalNavigationService';
-import { reviewAPI, Review } from '../services/reviewAPI';
+import navigationAPI from '../services/navigationAPI';
+import { reviewAPI, Review, ReviewStats } from '../services/reviewAPI';
 import ReviewCard from '../components/ReviewCard';
 
 export default function ParkingDetailScreen() {
@@ -17,6 +18,7 @@ export default function ParkingDetailScreen() {
   const [selectedDay, setSelectedDay] = useState('월');
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewStats, setReviewStats] = useState<ReviewStats | null>(null);
 
   // 주차장 데이터베이스 (실제로는 API에서 받아올 데이터)
   const parkingData: Record<number, ParkingLot> = {
@@ -98,7 +100,10 @@ export default function ParkingDetailScreen() {
     },
   };
 
-  const parkingInfo = parkingData[Number(params.id) as keyof typeof parkingData] || parkingData[1];
+  const initialMock = parkingData[Number(params.id) as keyof typeof parkingData];
+  const [parkingInfo, setParkingInfo] = useState<ParkingLot>(initialMock || parkingData[1]);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const isMock = !!initialMock;
   const currentIsFavorite = isFavorite(parkingInfo.id);
 
   // 요일별 시간대 데이터
@@ -136,14 +141,18 @@ export default function ParkingDetailScreen() {
   const loadReviews = async () => {
     try {
       setReviewsLoading(true);
-      const response = await reviewAPI.getReviewsByParkingId(parkingInfo.id.toString(), 3); // 최대 3개만 미리보기
-      if (response.success && response.data) {
-        setReviews(response.data);
-      }
+      const [listRes, statsRes] = await Promise.all([
+        reviewAPI.getReviewsByParkingId(parkingInfo.id.toString(), 3),
+        reviewAPI.getReviewStats(parkingInfo.id.toString())
+      ]);
+
+      if (listRes.success && listRes.data) setReviews(listRes.data);
+      if (statsRes.success && statsRes.data) setReviewStats(statsRes.data as ReviewStats);
     } catch (error) {
       console.error('리뷰 로드 실패:', error);
       // 서버 연결 실패 시 빈 배열로 설정 (에러 메시지는 표시하지 않음)
       setReviews([]);
+      setReviewStats(null);
     } finally {
       setReviewsLoading(false);
     }
@@ -154,25 +163,73 @@ export default function ParkingDetailScreen() {
   };
 
   useEffect(() => {
-    loadReviews();
+    // 실데이터 상세 불러오기 (목록에서 넘어온 id가 목데이터에 없을 경우)
+    const loadDetail = async () => {
+      try {
+        if (!isMock && params.id) {
+          const code = String(params.id);
+          const detail: any = await navigationAPI.getParkingDetail(code);
+          const d = detail?.data || detail; // 응답 래핑 호환
+          if (d) {
+            const mapped: ParkingLot = {
+              id: Number(d.parking_code),
+              name: d.parking_name || d.addr || `주차장 ${d.parking_code}` || '이름 없음',
+              address: d.addr || '주소 정보 없음',
+              distance: d.distance_km ? `${(d.distance_km * 1000).toFixed(0)}m` : '-',
+              time: '-',
+              rating: 0,
+              totalReviews: 0,
+              available: d.capacity && d.cur_parking != null ? Math.max(d.capacity - d.cur_parking, 0) : 0,
+              total: d.capacity || 0,
+              price: d.rates ? `${Number(d.rates).toLocaleString()}원/${d.time_rate || '60'}분` : '-',
+              status: d.parking_status_name || '정보없음',
+              statusColor: '#4CAF50',
+              operatingHours: d.weekday_begin && d.weekday_end ? `${d.weekday_begin}-${d.weekday_end}` : '-',
+              phone: d.tel || '-',
+              features: [],
+              description: d.description || '',
+              type: 'public' as const,
+            };
+            setParkingInfo(mapped);
+            if (d.lat_wgs84 && d.lng_wgs84) {
+              setCoords({ lat: parseFloat(d.lat_wgs84), lng: parseFloat(d.lng_wgs84) });
+            }
+          }
+        } else if (isMock) {
+          // 목데이터 좌표 프리셋 사용
+          const preset = {
+            1: { lat: 37.4979462, lng: 127.0279958 },
+            2: { lat: 37.5009451, lng: 127.0355893 },
+            3: { lat: 37.5044085, lng: 127.0475235 },
+            4: { lat: 37.5070822, lng: 127.0628388 },
+          } as const;
+          const c = preset[(parkingInfo.id as 1|2|3|4)] || preset[1];
+          setCoords(c);
+        }
+      } catch (e) {
+        console.log('주차장 상세 불러오기 실패:', e);
+      }
+    };
+    loadDetail();
+  }, [params.id]);
+
+  // parkingInfo가 업데이트된 후에 리뷰 로드
+  useEffect(() => {
+    if (parkingInfo.id) {
+      loadReviews();
+    }
   }, [parkingInfo.id]);
 
   const handleNavigation = async () => {
-    // 주차장 좌표 (실제로는 API에서 받아와야 함)
-    const parkingCoordinates = {
-      1: { lat: 37.4979462, lng: 127.0279958 }, // 강남역 지하주차장
-      2: { lat: 37.5009451, lng: 127.0355893 }, // 역삼역 공영주차장  
-      3: { lat: 37.5044085, lng: 127.0475235 }, // 선릉역 백화점 주차장
-      4: { lat: 37.5070822, lng: 127.0628388 }, // 테헤란로 지상주차장
-    };
+    // 좌표: 실데이터 우선, 없으면 목 프리셋
+    const fallback = { lat: 37.4979462, lng: 127.0279958 };
+    const c = coords || fallback;
 
-    const coords = parkingCoordinates[parkingInfo.id as keyof typeof parkingCoordinates] || parkingCoordinates[1];
-    
-    console.log('주차장 좌표:', coords);
-    
+    console.log('주차장 좌표:', c);
+
     const destination = {
-      latitude: coords.lat,
-      longitude: coords.lng,
+      latitude: c.lat,
+      longitude: c.lng,
       name: parkingInfo.name,
       address: parkingInfo.address
     };
@@ -253,8 +310,12 @@ export default function ParkingDetailScreen() {
             <View style={styles.ratingSection}>
               <View style={styles.rating}>
                 <Ionicons name="star" size={16} color="#FFD700" />
-                <Text style={styles.ratingText}>{parkingInfo.rating}</Text>
-                <Text style={styles.reviewCount}>({parkingInfo.totalReviews}개 리뷰)</Text>
+                <Text style={styles.ratingText}>
+                  {reviewStats?.averageRating?.toFixed(1) ?? parkingInfo.rating}
+                </Text>
+                <Text style={styles.reviewCount}>
+                  ({reviewStats?.totalReviews ?? parkingInfo.totalReviews}개 리뷰)
+                </Text>
               </View>
               <View style={styles.distance}>
                 <Ionicons name="location" size={16} color="#007AFF" />
@@ -395,8 +456,12 @@ export default function ParkingDetailScreen() {
             <View style={styles.ratingSection}>
               <View style={styles.rating}>
                 <Ionicons name="star" size={16} color="#FFD700" />
-                <Text style={styles.ratingText}>{parkingInfo.rating}</Text>
-                <Text style={styles.reviewCount}>({parkingInfo.totalReviews}개 리뷰)</Text>
+                <Text style={styles.ratingText}>
+                  {reviewStats?.averageRating?.toFixed(1) ?? parkingInfo.rating}
+                </Text>
+                <Text style={styles.reviewCount}>
+                  ({reviewStats?.totalReviews ?? parkingInfo.totalReviews}개 리뷰)
+                </Text>
               </View>
             </View>
 

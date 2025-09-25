@@ -1,79 +1,14 @@
 import { NativeModules, Platform } from "react-native";
 
-// 여러 방법으로 개발 서버 호스트를 감지
+// 단순화된 API URL 설정 (ngrok 터널만 사용)
 const getApiBaseUrl = () => {
-  if (__DEV__) {
-    console.log("🔍 개발 환경에서 API 서버 주소 감지 중...");
-
-    // iOS에서 핫스팟 사용 시 강제로 터널 URL 사용
-    if (Platform.OS === "ios") {
-      console.log(
-        "📱 iOS 환경 - 핫스팟 Client Isolation 문제로 인해 터널 URL 강제 사용"
-      );
-      const tunnelUrl = "https://02c7ce9fa570.ngrok-free.app/api";
-      console.log("🚇 백엔드 터널 URL 사용:", tunnelUrl);
-      return tunnelUrl;
-    }
-
-    // Android나 기타 환경에서는 기존 로직 사용
-    try {
-      const scriptURL = NativeModules.SourceCode?.scriptURL;
-      console.log("📱 Script URL:", scriptURL);
-
-      if (scriptURL && scriptURL.includes("://")) {
-        const urlParts = scriptURL.split("://");
-        const protocol = urlParts[0];
-        const hostAndPath = urlParts[1];
-        const host = hostAndPath.split("/")[0].split(":")[0];
-
-        console.log("🔍 Protocol:", protocol);
-        console.log("🔍 추출된 호스트:", host);
-
-        if (
-          host.includes(".exp.direct") ||
-          host.includes(".ngrok.io") ||
-          host.includes(".localtunnel.me")
-        ) {
-          const detectedUrl = `${protocol}://${host}/api`;
-          console.log("🚇 터널 모드 감지된 API URL:", detectedUrl);
-          return detectedUrl;
-        } else if (
-          host !== "localhost" &&
-          host !== "127.0.0.1" &&
-          host !== "::1"
-        ) {
-          const detectedUrl = `${protocol}://${host}:5001/api`;
-          console.log("✅ 자동 감지된 API URL (IP):", detectedUrl);
-          return detectedUrl;
-        }
-      }
-    } catch (error) {
-      console.log("❌ 스크립트 URL 방식 실패:", error);
-    }
-
-    // 환경 변수 폴백
-    const envHost = process.env.EXPO_PUBLIC_DEV_SERVER_HOST;
-    if (envHost && envHost !== "localhost") {
-      const detectedUrl = `http://${envHost}:5001/api`;
-      console.log("✅ 환경변수로 감지된 API URL:", detectedUrl);
-      return detectedUrl;
-    }
-
-    // Android 에뮬레이터 폴백
-    const fallbackUrl = "http://10.0.2.2:5001/api";
-    console.log("🤖 Android/기타 폴백 URL:", fallbackUrl);
-    return fallbackUrl;
-  }
-
-  // 프로덕션 환경
-  return "https://your-production-api.com/api";
+  // 개발/프로덕션 상관없이 ngrok 터널 사용
+  const ngrokUrl = "https://10e981896508.ngrok-free.app/api";
+  console.log("🚇 ngrok 터널 URL 강제 사용:", ngrokUrl);
+  return ngrokUrl;
 };
 
-// ngrok 터널 URL 사용 (고정)
-const API_BASE_URL = "https://2d0a36f94585.ngrok-free.app/api";
-
-// 동적 감지 사용 시
-// const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = getApiBaseUrl();
 
 // 디버깅을 위해 API URL 로그 출력
 console.log("🔍 API_BASE_URL:", API_BASE_URL);
@@ -214,6 +149,109 @@ class NavigationAPI {
       method: "POST",
       body: JSON.stringify(request),
     });
+  }
+
+  async getNearbyParkingTopN(
+    latitude: number,
+    longitude: number,
+    limit: number = 10,
+    radiusKm?: number
+  ): Promise<Array<{
+    parking_code: string;
+    parking_name: string;
+    addr: string;
+    lat_wgs84: string;
+    lng_wgs84: string;
+    distance_km: number;
+    pay_yn_name?: string;
+    weekday_begin?: string;
+    weekday_end?: string;
+    rates?: string;
+    time_rate?: string;
+    add_rates?: string;
+    add_time_rate?: string;
+  }>> {
+    const body: any = { latitude, longitude, limit };
+    if (radiusKm) body.radiusKm = radiusKm;
+    return this.request('/parking/nearby', {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+  }
+
+  async getParkingDetail(parkingCode: string | number): Promise<{ success: boolean; data?: any; message?: string; }> {
+    return this.request(`/parking/detail/${parkingCode}`, {
+      method: 'GET'
+    });
+  }
+
+  async reportParkingStatus(
+    parkingCode: string | number,
+    statusName: '여유' | '보통' | '혼잡'
+  ): Promise<{ success: boolean; message?: string; }>{
+    return this.request(`/parking/status/report`, {
+      method: 'POST',
+      body: JSON.stringify({ parkingCode, statusName })
+    });
+  }
+
+  async searchParkingLots(
+    query: string,
+    limit: number = 50
+  ): Promise<{
+    success: boolean;
+    data?: Array<{
+      parking_code: string;
+      parking_name: string;
+      addr: string;
+      lat_wgs84: string;
+      lng_wgs84: string;
+      distance_km: number;
+      average_rating: number;
+      total_reviews: number;
+      capacity?: number;
+      cur_parking?: number;
+      parking_status_name?: string;
+      rates?: string;
+      time_rate?: string;
+      pay_yn_name?: string;
+      weekday_begin?: string;
+      weekday_end?: string;
+    }>;
+    total_found?: number;
+    query?: string;
+    message?: string;
+  }> {
+    // 검색 API는 전체 응답 객체를 반환해야 함 (다른 API들과 동일)
+    const url = `${API_BASE_URL}/parking/search`;
+    const config: RequestInit = {
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true",
+      },
+      method: "POST",
+      body: JSON.stringify({ query, limit }),
+    };
+
+    console.log("🌐 검색 API 요청:", url);
+    console.log("⚙️ 검색 요청 옵션:", config);
+
+    try {
+      const response = await fetch(url, config);
+      console.log("📡 검색 응답 상태:", response.status);
+
+      const result = await response.json();
+      console.log("📦 검색 응답 전체:", result);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return result; // 전체 응답 객체 반환
+    } catch (error) {
+      console.error(`❌ 검색 API request failed:`, error);
+      throw error;
+    }
   }
 
   async searchPlace(

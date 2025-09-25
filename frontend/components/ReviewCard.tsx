@@ -22,6 +22,26 @@ export default function ReviewCard({ review, onPress, showParkingName = false }:
 
   const getCategoryLabel = (categoryId: string) => {
     const categoryMap: Record<string, string> = {
+      // 긍정적 카테고리
+      'price_cheap': '💵 요금이 저렴해요',
+      'space_wide': '🚗 주차 공간이 넓어요',
+      'congestion_low': '✅ 자리가 넉넉해요',
+      'accessibility_good': '🚶‍♀️ 목적지와 가까워요',
+      'safety_good': '✨ 밝고 안전해요',
+      'convenience_good': '🅿️ 입/출차가 편해요',
+      'ev_charging': '🔌 전기차 충전 가능해요',
+      'facilities_good': '👩‍🦽 편의시설이 잘 돼있어요',
+      
+      // 부정적 카테고리
+      'price_expensive': '💰 요금이 비싸요',
+      'space_narrow': '🚗 주차 공간이 좁아요',
+      'congestion_high': '🈵 자리가 항상 부족해요',
+      'accessibility_bad': '🗺️ 찾아가기 어려워요',
+      'safety_bad': '🌙 어둡고 무서워요',
+      'convenience_bad': '🚧 입/출차가 불편해요',
+      'maintenance_bad': '🧹 시설이 낡았어요',
+      
+      // 기존 카테고리 (하위 호환성)
       'cleanliness': '청결도',
       'safety': '안전성',
       'accessibility': '접근성',

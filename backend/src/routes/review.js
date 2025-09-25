@@ -37,10 +37,10 @@ router.post('/', async (req, res) => {
       });
     }
 
-    if (!reviewText || reviewText.trim().length < 10) {
+    if (!reviewText || reviewText.trim().length < 2) {
       return res.status(400).json({
         success: false,
-        message: "리뷰 내용은 최소 10자 이상이어야 합니다."
+        message: "리뷰 내용은 최소 2자 이상이어야 합니다."
       });
     }
 
