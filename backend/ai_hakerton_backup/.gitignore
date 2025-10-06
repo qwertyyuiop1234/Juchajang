@@ -1,0 +1,32 @@
+# Firebase 인증 키 (보안 중요!)
+key.json
+
+# Python 캐시
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 가상환경
+venv/
+env/
+ENV/
+
+# 모델 파일
+*.pth
+*.joblib
+
+# 데이터 파일
+*.csv
+data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+

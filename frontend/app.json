@@ -1,0 +1,87 @@
+{
+  "expo": {
+    "name": "주찾앙",
+    "slug": "jca",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "splash": {
+      "image": "./assets/images/mainbackground.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#1a2744"
+    },
+    "scheme": "jca",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.coma.jca",
+      "deploymentTarget": "15.1",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "이 앱은 현재 위치를 확인하여 주변 주차장을 찾기 위해 위치 정보를 사용합니다.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "이 앱은 현재 위치를 확인하여 주변 주차장을 찾기 위해 위치 정보를 사용합니다."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#007AFF"
+      },
+      "splash": {
+        "image": "./assets/images/mainbackground.png",
+        "resizeMode": "cover",
+        "backgroundColor": "#1a2744"
+      },
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ],
+      "package": "com.coma.jca"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "이 앱은 현재 위치를 확인하여 주변 주차장을 찾기 위해 위치 정보를 사용합니다."
+        }
+      ],
+      [
+        "@mj-studio/react-native-naver-map",
+        {
+          "client_id": "swbufm4nxk",
+          "android": {
+            "ACCESS_FINE_LOCATION": true,
+            "ACCESS_COARSE_LOCATION": true
+          },
+          "ios": {
+            "NSLocationAlwaysUsageDescription": "이 앱은 현재 위치를 확인하여 주변 주차장을 찾기 위해 위치 정보를 사용합니다.",
+            "NSLocationWhenInUseUsageDescription": "이 앱은 현재 위치를 확인하여 주변 주차장을 찾기 위해 위치 정보를 사용합니다."
+          }
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "15.1"
+          },
+          "android": {
+            "extraMavenRepos": [
+              "https://repository.map.naver.com/archive/maven"
+            ]
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
